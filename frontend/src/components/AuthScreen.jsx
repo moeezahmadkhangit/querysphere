@@ -9,9 +9,9 @@ const QUOTES = [
 
 export default function AuthScreen({ onLogin, onRegister, loading, error, setError }) {
   const [tab,      setTab]      = useState('login');
-  const [username, setUsername] = useState('');
-  const [email,    setEmail]    = useState('');
-  const [password, setPassword] = useState('');
+  const [username, setUsername] = useState('MOeez');
+  const [email,    setEmail]    = useState('moeez@querysphere.com');
+  const [password, setPassword] = useState('password123');
   const quote = QUOTES[Math.floor(Math.random() * QUOTES.length)];
 
   const handleTab = (t) => { setTab(t); setError(''); };
