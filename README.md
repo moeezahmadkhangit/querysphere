@@ -46,3 +46,4 @@ cd frontend && npm run dev
 - ✅ Emoji reactions
 - 🎨 Call overlay UI
 - 🎨 DM list UI
+# querysphere
