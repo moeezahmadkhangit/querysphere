@@ -1,0 +1,52 @@
+# Render Blueprint — deploy both Node services in one click.
+#
+#   render.com -> New -> Blueprint -> pick this repo
+#
+# The frontend is NOT here: it is a static Vite build and goes on Vercel with
+# the custom domain. Only these two need a real server.
+#
+# Free-plan hours: a free Render account gets 750 instance-hours a month, shared
+# across every free service. That is enough for ONE service to stay up around
+# the clock (~730h), which is why only the backend runs the keep-alive pinger —
+# it holds live sockets and keeps all chat state in memory, so a spin-down
+# disconnects everyone and wipes the data. mlend is stateless and is left to
+# sleep; the cost is a slow first Format/Summarize after an idle spell. To keep
+# mlend warm too, add KEEP_ALIVE_INTERVAL_MS to it — and expect to outrun the
+# free hours, so put one of the two on a paid instance.
+
+services:
+  - type: web
+    name: querysphere-backend
+    runtime: node
+    plan: free
+    rootDir: backend
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      # Generated once by Render and never printed in the repo. The value in
+      # .env.example is public and must not be used in production.
+      - key: JWT_SECRET
+        generateValue: true
+      # Origin allowed by CORS and the socket.io handshake — set this to the
+      # live frontend URL, e.g. https://querysphere.moeezahmadkhan.com
+      - key: FRONTEND_URL
+        sync: false
+      # Self-ping cadence. Render idles a free service out after ~15 minutes.
+      - key: KEEP_ALIVE_INTERVAL_MS
+        value: "300000"
+      # KEEP_ALIVE_URL is not needed here: Render injects RENDER_EXTERNAL_URL.
+
+  - type: web
+    name: querysphere-mlend
+    runtime: node
+    plan: free
+    rootDir: mlend
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: OPENROUTER_API_KEY
+        sync: false
+      - key: FRONTEND_URL
+        sync: false

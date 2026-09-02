@@ -6,6 +6,7 @@ import dotenv from 'dotenv';
 import authRouter from './routes/auth.js';
 import chatRouter from './routes/chat.js';
 import { initSocket } from './socket/chatSocket.js';
+import { startKeepAlive } from './keepAlive.js';
 
 dotenv.config();
 
@@ -55,4 +56,5 @@ const PORT = process.env.PORT || 3001;
 server.listen(PORT, () => {
   console.log(`\n🚀 QuerySphere Backend running on http://localhost:${PORT}`);
   console.log(`📡 Socket.io ready`);
+  startKeepAlive();
 });

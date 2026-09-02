@@ -3,6 +3,7 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import aiRouter from './routes/ai.js';
 import { getApiKey, MODELS } from './openrouter.js';
+import { startKeepAlive } from './keepAlive.js';
 
 dotenv.config();
 
@@ -30,4 +31,5 @@ app.listen(PORT, () => {
   } else {
     console.log('⚠️  No OpenRouter key — add OPENROUTER_API_KEY to mlend/.env (local fallbacks still work)');
   }
+  startKeepAlive();
 });
