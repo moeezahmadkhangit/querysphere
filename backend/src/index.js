@@ -11,7 +11,7 @@ import chatRouter from './routes/chat.js';
 import socialRouter from './routes/social.js';
 import { initSocket } from './socket/chatSocket.js';
 import { setIo } from './socket/notify.js';
-import { startKeepAlive } from './keepAlive.js';
+import { startKeepAlive, keepAliveStatus } from './keepAlive.js';
 import { allowedOrigins } from './allowedOrigins.js';
 
 const app = express();
@@ -55,7 +55,13 @@ app.use((req, res, next) => {
 });
 
 // Health check
-app.get('/health', (_, res) => res.json({ status: 'ok', service: 'QuerySphere Backend' }));
+// keepAlive is reported here so it is possible to tell, from outside, whether
+// the thing that stops a free instance being idled out is actually running.
+app.get('/health', (_, res) => res.json({
+  status: 'ok',
+  service: 'QuerySphere Backend',
+  keepAlive: keepAliveStatus(),
+}));
 
 // Routes
 app.use('/api/auth', authRouter);

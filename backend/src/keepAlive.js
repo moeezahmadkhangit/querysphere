@@ -35,6 +35,23 @@ const OPT_IN = process.env.KEEP_ALIVE_INTERVAL_MS || process.env.KEEP_ALIVE_URL;
 
 const INTERVAL_MS = Number(process.env.KEEP_ALIVE_INTERVAL_MS) || 5 * 60 * 1000;
 
+/**
+ * Whether the pinger is actually running, reported on /health.
+ *
+ * Turning the pinger into an opt-in made it possible to deploy with it
+ * silently off — the service looks perfectly healthy right up until it is
+ * idled out fifteen minutes later, and the only way to find out was to read
+ * the boot log or wait for the outage. A service that depends on a background
+ * task to stay alive should be able to say whether that task is running.
+ *
+ * Nothing here is sensitive: the target is the service's own public hostname.
+ */
+let state = { enabled: false, everyMinutes: null, target: null, lastPingAt: null, lastPingOk: null };
+
+export function keepAliveStatus() {
+  return { ...state };
+}
+
 export function startKeepAlive(path = '/health') {
   if (!OPT_IN) {
     console.log('💤 Keep-alive off (set KEEP_ALIVE_INTERVAL_MS to switch it on)');
@@ -58,8 +75,12 @@ export function startKeepAlive(path = '/health') {
         signal: AbortSignal.timeout(10_000),
         headers: { 'user-agent': 'querysphere-keepalive' },
       });
+      state.lastPingAt = new Date().toISOString();
+      state.lastPingOk = res.ok;
       if (!res.ok) console.warn(`Keep-alive ping got HTTP ${res.status}`);
     } catch (err) {
+      state.lastPingAt = new Date().toISOString();
+      state.lastPingOk = false;
       // A failed ping is not fatal — the host may be mid-deploy. Log and retry
       // on the next tick rather than taking the process down.
       console.warn(`Keep-alive ping failed: ${err.message}`);
@@ -69,5 +90,7 @@ export function startKeepAlive(path = '/health') {
   const timer = setInterval(ping, INTERVAL_MS);
   // Do not hold the event loop open on its own account.
   timer.unref?.();
+
+  state = { enabled: true, everyMinutes: minutes, target, lastPingAt: null, lastPingOk: null };
   return timer;
 }

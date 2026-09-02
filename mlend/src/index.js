@@ -3,7 +3,7 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import aiRouter from './routes/ai.js';
 import { getApiKey, MODELS } from './openrouter.js';
-import { startKeepAlive } from './keepAlive.js';
+import { startKeepAlive, keepAliveStatus } from './keepAlive.js';
 import { allowedOrigins } from './allowedOrigins.js';
 
 dotenv.config();
@@ -19,6 +19,7 @@ app.get('/health', (_, res) =>
     service: 'QuerySphere MLend',
     provider: 'openrouter',
     keyConfigured: !!getApiKey(),
+    keepAlive: keepAliveStatus(),
     models: MODELS,
   }),
 );
