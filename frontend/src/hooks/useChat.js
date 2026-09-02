@@ -13,6 +13,24 @@ export function useChat(user) {
   const socketRef  = useRef(null);
   const typingTimer = useRef(null);
 
+  /**
+   * The active room, mirrored into a ref.
+   *
+   * The socket effect below runs once per user and never again, so anything it
+   * reads from state is frozen at the value that state had on the render that
+   * opened the connection — and on that render `activeRoom` is still null,
+   * because rooms are fetched afterwards. The `new_message` handler was
+   * comparing every inbound `roomId` against `undefined` and dropping the
+   * message, which silently broke the entire chat: nothing you sent came back,
+   * and none of the simulated replies ever arrived.
+   *
+   * A ref is read at call time, so the handler sees the room you are actually
+   * looking at. Re-subscribing on every room change would work too, but it
+   * would tear down and rebuild the socket listeners on each click.
+   */
+  const activeRoomRef = useRef(null);
+  useEffect(() => { activeRoomRef.current = activeRoom; }, [activeRoom]);
+
   // Init socket
   useEffect(() => {
     if (!user) return;
@@ -22,7 +40,16 @@ export function useChat(user) {
     socket.on('connect',    () => setConnected(true));
     socket.on('disconnect', () => setConnected(false));
     socket.on('new_message', ({ roomId, message }) => {
-      if (roomId === activeRoom?.id) setMessages((p) => [...p, message]);
+      if (roomId !== activeRoomRef.current?.id) return;
+      // The server echoes to everyone in the room, sender included, so guard
+      // against a double-append if the same id arrives twice.
+      setMessages((p) => (p.some((m) => m.id === message.id) ? p : [...p, message]));
+    });
+    // The server broadcasts this after every add_reaction, but nothing was
+    // listening — so a reaction incremented on the server and the chip in front
+    // of you never moved until the room was re-entered.
+    socket.on('reaction_updated', ({ messageId, reactions }) => {
+      setMessages((p) => p.map((m) => (m.id === messageId ? { ...m, reactions } : m)));
     });
     socket.on('typing_start', ({ userId, username }) => {
       if (userId !== user.id) setTypingUsers((p) => p.find(u => u.id === userId) ? p : [...p, { id: userId, username }]);

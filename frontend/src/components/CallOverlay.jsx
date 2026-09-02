@@ -25,9 +25,7 @@ export default function CallOverlay({ user, onClose }) {
           >{videoOff ? '📵' : '📹'}</button>
           <button id="call-end" className="call-btn end" onClick={onClose} title="End call">📵</button>
         </div>
-        <p style={{ marginTop:24, fontSize:12, color:'var(--text-muted)' }}>
-          Voice &amp; video calls coming soon in v2 🚀
-        </p>
+        <p className="call-footnote">Voice &amp; video calls coming soon in v2 🚀</p>
       </div>
     </div>
   );

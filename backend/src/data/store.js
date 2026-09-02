@@ -43,10 +43,10 @@ export const rooms = new Map([
 
 // Seed some starter messages in general
 const seedMessages = [
-  { id: 'seed1', userId: 'moeez', username: 'Moeez (Alpha)', avatar: 'MZ', text: 'Hey everyone! QuerySphere is finally live! Check out the gorgeous Neumorphic design I crafted. 🎨', timestamp: new Date(Date.now() - 300000).toISOString(), reactions: [{ emoji: '🎉', count: 4 }, { emoji: '🔥', count: 3 }] },
-  { id: 'seed2', userId: 'basim', username: 'Basim', avatar: 'BS', text: 'Woah Moeez, this looks insanely clean! The soft raised elements and gradients feel so premium.', timestamp: new Date(Date.now() - 240000).toISOString(), reactions: [{ emoji: '👍', count: 2 }] },
-  { id: 'seed3', userId: 'adeel', username: 'Adeel', avatar: 'AD', text: 'Agreed! The micro-animations and tactile inputs are incredibly smooth. Main dev Moeez crushed it! 🚀', timestamp: new Date(Date.now() - 180000).toISOString(), reactions: [{ emoji: '💯', count: 3 }] },
-  { id: 'seed4', userId: 'bilawal', username: 'Bilawal', avatar: 'BL', text: 'Love it! I\'m trying the AI Format and Summarize features right now, it is super fast.', timestamp: new Date(Date.now() - 120000).toISOString(), reactions: [{ emoji: '💡', count: 2 }] },
+  { id: 'seed1', userId: 'moeez', username: 'Moeez (Alpha)', avatar: 'MZ', text: 'Hey everyone — QuerySphere is live. I ported the whole thing onto the portfolio design system: ink ground, gold accent, teal for anything the AI says. 🎨', timestamp: new Date(Date.now() - 300000).toISOString(), reactions: [{ emoji: '🎉', count: 4 }, { emoji: '🔥', count: 3 }] },
+  { id: 'seed2', userId: 'basim', username: 'Basim', avatar: 'BS', text: 'Woah, this reads so much sharper. The hairline gold borders and the Fraunces wordmark do a lot of work.', timestamp: new Date(Date.now() - 240000).toISOString(), reactions: [{ emoji: '👍', count: 2 }] },
+  { id: 'seed3', userId: 'adeel', username: 'Adeel', avatar: 'AD', text: 'Agreed. And keeping teal strictly for the assistant means you always know which voice you are reading. 🚀', timestamp: new Date(Date.now() - 180000).toISOString(), reactions: [{ emoji: '💯', count: 3 }] },
+  { id: 'seed4', userId: 'bilawal', username: 'Bilawal', avatar: 'BL', text: 'Love it. Trying Format and Summarize now — running on OpenRouter free models, so it costs nothing.', timestamp: new Date(Date.now() - 120000).toISOString(), reactions: [{ emoji: '💡', count: 2 }] },
 ];
 
 rooms.get('general').messages = seedMessages;

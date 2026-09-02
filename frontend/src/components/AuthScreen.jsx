@@ -43,17 +43,17 @@ export default function AuthScreen({ onLogin, onRegister, loading, error, setErr
         <form onSubmit={handleSubmit}>
           {tab === 'register' && (
             <div className="form-group">
-              <label className="form-label">Username</label>
-              <input id="qs-username" className="form-input" type="text" placeholder="e.g. stardust_dev" value={username} onChange={e => setUsername(e.target.value)} required />
+              <label className="form-label" htmlFor="qs-username">Username</label>
+              <input id="qs-username" className="form-input" type="text" autoComplete="username" placeholder="e.g. stardust_dev" value={username} onChange={e => setUsername(e.target.value)} required />
             </div>
           )}
           <div className="form-group">
-            <label className="form-label">Email</label>
-            <input id="qs-email" className="form-input" type="email" placeholder="you@example.com" value={email} onChange={e => setEmail(e.target.value)} required />
+            <label className="form-label" htmlFor="qs-email">Email</label>
+            <input id="qs-email" className="form-input" type="email" autoComplete="email" placeholder="you@example.com" value={email} onChange={e => setEmail(e.target.value)} required />
           </div>
           <div className="form-group">
-            <label className="form-label">Password</label>
-            <input id="qs-password" className="form-input" type="password" placeholder="••••••••" value={password} onChange={e => setPassword(e.target.value)} required />
+            <label className="form-label" htmlFor="qs-password">Password</label>
+            <input id="qs-password" className="form-input" type="password" autoComplete={tab === 'login' ? 'current-password' : 'new-password'} placeholder="••••••••" value={password} onChange={e => setPassword(e.target.value)} required />
           </div>
           {error && <p className="auth-error">⚠️ {error}</p>}
           <button id="qs-auth-submit" className="btn-primary" type="submit" disabled={loading}>

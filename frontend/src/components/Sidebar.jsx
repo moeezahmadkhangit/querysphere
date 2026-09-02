@@ -33,10 +33,10 @@ export default function Sidebar({ user, rooms, activeRoom, onSwitch, onLogout })
         <p className="sidebar-section-label">Direct Messages</p>
         {mockDMs.map((dm) => (
           <div key={dm.id} className="channel-item" id={`dm-${dm.id}`}>
-            <div style={{ position:'relative', width:20 }}>
-              <span style={{ fontSize:14 }}>{dm.avatar.slice(0,1)}</span>
-              {dm.online && <span style={{ position:'absolute', bottom:-1, right:-2, width:7, height:7, borderRadius:'50%', background:'var(--mint)', border:'1.5px solid var(--surface)' }} />}
-            </div>
+            <span className="dm-initial">
+              {dm.avatar.slice(0, 1)}
+              {dm.online && <span className="dm-dot" />}
+            </span>
             <span className="channel-name">{dm.name}</span>
           </div>
         ))}

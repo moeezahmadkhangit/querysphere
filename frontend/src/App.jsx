@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import AuthScreen from './components/AuthScreen';
 import Sidebar from './components/Sidebar';
 import ChatRoom from './components/ChatRoom';
@@ -7,6 +8,9 @@ import { useChat } from './hooks/useChat';
 export default function App() {
   const { user, loading, error, login, register, logout, setError } = useAuth();
   const { rooms, activeRoom, messages, typingUsers, switchRoom, sendMessage, startTyping, addReaction } = useChat(user);
+  // Below 720px the sidebar is a slide-over rather than a column. Desktop
+  // ignores this entirely — the CSS only consults it inside the media query.
+  const [navOpen, setNavOpen] = useState(false);
 
   if (!user) {
     return (
@@ -21,13 +25,21 @@ export default function App() {
   }
 
   return (
-    <div className="app-layout">
+    <div className={`app-layout${navOpen ? ' nav-open' : ''}`}>
       <Sidebar
         user={user}
         rooms={rooms}
         activeRoom={activeRoom}
-        onSwitch={switchRoom}
+        onSwitch={(room) => { switchRoom(room); setNavOpen(false); }}
         onLogout={logout}
+      />
+      {/* Only ever visible under the narrow media query; it is what closes the
+          slide-over when you tap beside it. */}
+      <button
+        className="nav-scrim"
+        aria-label="Close channel list"
+        tabIndex={navOpen ? 0 : -1}
+        onClick={() => setNavOpen(false)}
       />
       <ChatRoom
         room={activeRoom}
@@ -37,6 +49,7 @@ export default function App() {
         onSend={sendMessage}
         onStartTyping={startTyping}
         onReact={addReaction}
+        onToggleNav={() => setNavOpen((o) => !o)}
       />
     </div>
   );

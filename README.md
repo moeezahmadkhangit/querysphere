@@ -1,93 +1,131 @@
-# 🔮 QuerySphere — AI-Powered Community Chat App
+# 🔮 QuerySphere — AI-Powered Community Chat
 
-QuerySphere is a portfolio-grade, real-time community messaging platform designed with a stunning **Soft Neumorphic (Tactile 3D)** UI design language. It integrates real-time WebSocket communications with an intelligent Express-based AI microservice to provide automatic grammar formatting and conversation summarization.
+QuerySphere is a real-time community messaging app with an AI microservice that polishes your drafts and recaps a room. It runs entirely on **OpenRouter's free model tier**, so the AI features cost nothing to operate.
+
+The interface is a port of the design system from [moeezahmadkhan.com](https://moeezahmadkhan.com) — the two properties are meant to read as one designer's work.
 
 ---
 
-## 🎨 Soft Neumorphic UI Design
-Unlike generic dashboards, QuerySphere features a gorgeous custom design system:
-- **Soft Raised Cards**: Sidebars, messaging windows, and the assistant panels are designed with smooth squircle edges and double-drop shadow grids (`box-shadow: 8px 8px 16px #cbd5e0, -8px -8px 16px #ffffff`).
-- **Tactile Inset Inputs**: All interactive input fields (like the chat textbox and auth inputs) display inset neumorphic drop shadows (`box-shadow: inset 4px 4px 8px #cbd5e0`) to feel highly responsive.
-- **Micro-Animations**: Hover-triggered color shifts, bouncy typing status bubbles, and a pulsing ring calling overlay keep the client interface alive.
-- **Accents**: Gradient accents (`linear-gradient(135deg, #2F80ED, #1B4FB3)`) for main indicators and actions.
+## 🎨 Design system
+
+Dark editorial, ported token-for-token from the portfolio's `styles/tokens.css`:
+
+| | |
+|---|---|
+| **Ground** | `--ink #07070d`, panels `--surface #0e0e17`, recessed `--surface-2 #14141f` |
+| **Lines** | one hairline, `rgb(231 194 125 / 0.14)` — depth comes from borders, not shadows |
+| **Gold** `#e7c27d` | the only accent on a human surface: active channel, your own message, the primary button |
+| **Teal** `#5fd3c6` | reserved for the machine — the AI panel and the ✨ Format button, and nothing else |
+| **Type** | Fraunces (display), Geist (body), JetBrains Mono (labels, timestamps, model ids) |
+| **Spacing** | 8px scale, nothing outside it. Three radii: 4px, 12px, pill |
+
+Two rules are worth stating because they are easy to break by accident:
+
+- **Gold is the only accent on a human surface.** If something needs to be noticed, it is gold.
+- **Teal means software is talking.** The simulated developers (Basim, Adeel, Bilawal) are *not* the machine for this purpose — they are people in the app's fiction, so they render like anyone else and carry a small mono `sim` tag instead. A teal bubble signed "Adeel" would destroy the distinction the colour exists to make.
+
+The previous build was soft neumorphism on a light ground. None of it survives.
+
+---
+
+## 🤖 The AI service, and why it is a cascade
+
+`mlend` calls OpenRouter and only ever asks for `:free` models. Free models are also the least reliable models on the platform — they rate-limit without warning and individual providers drop offline — so a single model id would leave the app serving local fallbacks most of the day. It tries several in order and takes the first clean answer:
+
+```
+minimax/minimax-m3:free                 ← primary: fastest clean answer, best at keeping the sender's voice
+poolside/laguna-s-2.1:free
+nvidia/nemotron-3-super-120b-a12b:free
+inclusionai/ling-3.0-flash-fin:free
+google/gemma-4-31b-it:free
+z-ai/glm-5.2:free
+```
+
+The order is measurement, not reputation — see the comments in `mlend/src/openrouter.js` for what each model actually returned and which ones were excluded (one narrated its own scratchpad into the answer; another answered the message instead of formatting it).
+
+**Check the tier's health at any time:**
+
+```bash
+npm run check:models --prefix mlend
+```
+
+It sends one real request per model and prints latency and output. A run where only 2 or 3 of 6 answer is normal — that is exactly the condition the cascade exists for.
+
+**If every model fails**, the service falls back to a local formatter and summarizer. They are not as good, but they are instant and they always answer. The AI panel labels which model produced a summary, so you can always tell.
+
+**Cost and limits:** free models cost nothing per request. An OpenRouter account with credits purchased gets 1000 free-model requests/day; a key with no credits gets 50/day.
 
 ---
 
 ## ✨ Features
-*   🔐 **Secure JWT-Based Authentication**: Full register and sign-in modules with JWT session storage and pre-filled default options for easy reviewer testing.
-*   📡 **Real-Time WebSocket Chat**: Built on Socket.io, supporting live channel selection, messaging relays, typing indicator broadcasts, and emoji reactions.
-*   👥 **Simulated Developer Responses**: When you send messages, other developers (Basim, Adeel, Bilawal) will show typing status and respond automatically with natural delays!
-*   ✨ **AI Message Formatting**: Pre-process messy or slang-heavy chat drafts with a formatting parser that corrects grammar and inserts emojis.
-*   📋 **AI Conversation Summarizer**: Generates structured, markdown summaries (Overview, Key Points, Vibe status) of the active room's chat history.
-*   🛡️ **High-Fidelity AI Fallbacks**: Full local offline fallback modules. If no OpenAI API key is present or the connection fails, the microservice automatically transitions to smart local formatting and context summarization (fully customized for design and development queries!).
-*   📞 **Voice & Video Calling UI**: Beautiful overlay mockup representing active audio and video chat calls.
+
+- 🔐 **JWT auth** — register and sign in, token in localStorage.
+- 📡 **Real-time chat** over Socket.io — channels, typing indicators, emoji reactions.
+- 👥 **Simulated developers** reply with a realistic typing delay ~40% of the time, tagged `sim`.
+- ✨ **AI message formatting** — polish a messy draft before you send it.
+- 📋 **AI conversation summary** — Overview / Key Points / Vibe, with the answering model named.
+- 🛡️ **Local fallbacks** for both AI features when the free tier is down.
+- 📞 **Call overlay** — a UI mockup, not a working call.
+- 📱 **Narrow screens** — the sidebar and AI panel become slide-overs rather than disappearing.
 
 ---
 
-## ⚙️ Monorepo Directory Layout
+## ⚙️ Layout
+
 ```
-QuerySphere/
-├── frontend/   # React + Vite (port 5173)
-├── backend/    # Node + Express + Socket.io (port 3001)
-└── mlend/      # Express + OpenAI integration (port 3002)
+querysphere/
+├── frontend/   # React + Vite            (5173)
+├── backend/    # Express + Socket.io     (3001)
+└── mlend/      # Express + OpenRouter    (3002)
 ```
 
 ---
 
-## 🚀 Quick Setup & Installation
+## 🚀 Setup
 
-### 1. Prerequisite
-Ensure you have **Node.js (v16+)** installed on your local computer.
+**1. Environment.** Both services need a `.env`; the app will not start without them.
 
-### 2. Configure Environment
-Create a `.env` file in the `mlend/` folder:
 ```bash
-# mlend/.env
-OPENAI_API_KEY=your_openai_key_here
-PORT=3002
-```
-*(If no OpenAI key is configured, QuerySphere will seamlessly transition to its local high-fidelity AI fallback system!).*
-
-Create a `.env` file in the `backend/` folder:
-```bash
-# backend/.env
-JWT_SECRET=super_secret_jwt_key
-PORT=3001
+cp backend/.env.example backend/.env
+cp mlend/.env.example   mlend/.env
 ```
 
-### 3. Install Dependencies
-Open your terminal and run:
+Then put your OpenRouter key (from [openrouter.ai/keys](https://openrouter.ai/keys)) into `mlend/.env`:
+
+```bash
+OPENROUTER_API_KEY=sk-or-v1-...
+```
+
+Leave it unset and everything still runs — you just get the local fallbacks instead of model output.
+
+`backend/.env` needs `JWT_SECRET`; the example file has a usable value. The server exits immediately with a clear message if it is missing.
+
+**2. Install.**
+
 ```bash
 npm install --prefix backend
 npm install --prefix mlend
 npm install --prefix frontend
 ```
 
-### 4. Boot Up All Services
-Open three separate terminals in the project root folder:
+**3. Run**, in three terminals:
 
-*   **Terminal 1 (Backend Server)**:
-    ```bash
-    cd backend && npm run dev
-    ```
-*   **Terminal 2 (MLend AI Service)**:
-    ```bash
-    cd mlend && npm run dev
-    ```
-*   **Terminal 3 (Vite Client)**:
-    ```bash
-    cd frontend && npm run dev
-    ```
+```bash
+cd backend  && npm run dev    # :3001
+cd mlend    && npm run dev    # :3002
+cd frontend && npm run dev    # :5173
+```
+
+Open http://localhost:5173 and create an account. There are no seeded users — the store is in-memory and resets when the backend restarts.
 
 ---
 
-## 💻 Tech Stack
-- **Frontend**: React, Vite, Vanilla CSS (Neumorphic system)
-- **Real-Time Backend**: Node.js, Express, Socket.io
-- **AI Microservice**: Express, OpenAI NodeJS Client (`gpt-4o-mini`), custom regex fallbacks
-- **Session Auth**: JWT, bcryptjs
+## 💻 Stack
+
+React · Vite · Express · Socket.io · JWT · bcryptjs · OpenRouter (free tier, no SDK — plain `fetch`)
 
 ---
 
 ## 📄 License
-This project is licensed under the MIT License.
+
+MIT

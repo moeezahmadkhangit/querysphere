@@ -12,11 +12,14 @@ const EMPTY_QUOTES = [
   "The best conversations start with a simple hello 👋",
 ];
 
-export default function ChatRoom({ room, messages, typingUsers, user, onSend, onStartTyping, onReact }) {
+export default function ChatRoom({ room, messages, typingUsers, user, onSend, onStartTyping, onReact, onToggleNav }) {
   const [draft,      setDraft]      = useState('');
   const [formatting, setFormatting] = useState(false);
   const [showCall,   setShowCall]   = useState(false);
-  const [showPanel,  setShowPanel]  = useState(true);
+  // Open by default only where it is a column. Below 1080px it renders as an
+  // overlay, so defaulting it open would land a phone user on the AI panel
+  // rather than on the room they just signed in to read.
+  const [showPanel,  setShowPanel]  = useState(() => window.innerWidth > 1080);
   const bottomRef = useRef(null);
   const quote = EMPTY_QUOTES[Math.floor(Math.random() * EMPTY_QUOTES.length)];
 
@@ -41,14 +44,14 @@ export default function ChatRoom({ room, messages, typingUsers, user, onSend, on
       const { data } = await aiAPI.format(draft);
       setDraft(data.formatted);
     } catch (err) {
-      alert(err.response?.data?.error || 'Format failed — check your API key in mlend/.env');
+      alert(err.response?.data?.error || 'Format failed — check OPENROUTER_API_KEY in mlend/.env');
     } finally { setFormatting(false); }
   };
 
   if (!room) return (
-    <div style={{ flex:1, display:'flex', alignItems:'center', justifyContent:'center', color:'var(--text-muted)' }}>
-      <div style={{ textAlign:'center' }}>
-        <div style={{ fontSize:48, marginBottom:12 }}>🔮</div>
+    <div className="room-placeholder">
+      <div>
+        <div className="room-placeholder-icon">🔮</div>
         <p>Select a channel to start chatting</p>
       </div>
     </div>
@@ -60,6 +63,7 @@ export default function ChatRoom({ room, messages, typingUsers, user, onSend, on
       <div className="chat-area">
         {/* Header */}
         <div className="chat-header">
+          <button id="qs-toggle-nav" className="btn-icon btn-nav" title="Channels" onClick={onToggleNav}>☰</button>
           <span className="chat-header-icon">{room.icon || '💬'}</span>
           <div className="chat-header-info">
             <div className="chat-header-name">{room.name}</div>
@@ -78,7 +82,7 @@ export default function ChatRoom({ room, messages, typingUsers, user, onSend, on
             <div className="messages-empty">
               <div className="messages-empty-icon">💬</div>
               <p className="messages-empty-quote">"{quote}"</p>
-              <p style={{ fontSize:13 }}>Be the first to say something!</p>
+              <p>Be the first to say something!</p>
             </div>
           ) : (
             messages.map((msg) => (
@@ -115,18 +119,20 @@ export default function ChatRoom({ room, messages, typingUsers, user, onSend, on
                 disabled={!draft.trim() || formatting}
                 title="AI format message"
               >
-                {formatting ? <span className="spinner" style={{ width:12, height:12, borderWidth:2 }} /> : '✨ Format'}
+                {formatting ? <span className="spinner" /> : '✨ Format'}
               </button>
               <button id="qs-send" className="btn-send" onClick={handleSend} disabled={!draft.trim()} title="Send">➤</button>
             </div>
           </div>
-          <p style={{ fontSize:11, color:'var(--text-light)', marginTop:6, textAlign:'center' }}>
-            Press <kbd style={{ background:'var(--bg)', border:'1px solid var(--border)', padding:'0 4px', borderRadius:3 }}>Enter</kbd> to send · <kbd style={{ background:'var(--bg)', border:'1px solid var(--border)', padding:'0 4px', borderRadius:3 }}>Shift+Enter</kbd> for new line
+          <p className="input-hint">
+            <kbd>Enter</kbd> to send · <kbd>Shift+Enter</kbd> for a new line
           </p>
         </div>
       </div>
 
-      {showPanel && <AISummaryPanel messages={messages} />}
+      {/* Narrow screens render this as a full-width overlay — see the media
+          query in index.css — so the 🤖 toggle stays meaningful on a phone. */}
+      {showPanel && <AISummaryPanel messages={messages} onClose={() => setShowPanel(false)} />}
     </>
   );
 }
