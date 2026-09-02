@@ -59,8 +59,10 @@ It sends one real request per model and prints latency and output. A run where o
 
 ## ✨ Features
 
-- 🔐 **JWT auth** — register and sign in, token in localStorage.
-- 📡 **Real-time chat** over Socket.io — channels, typing indicators, emoji reactions.
+- 🔐 **JWT auth** — register and sign in. The stored session is checked against the server on every load, so an expired token signs you out with a reason instead of rendering a shell whose every request fails.
+- 📡 **Real-time chat** over Socket.io — channels, typing indicators, emoji reactions, all of which cross between real users.
+- 🟢 **Real presence** — "In this channel" is the server's live roster, not a drawing. Open a second browser, sign in as somebody else, and each sees the other appear.
+- 🔌 **Honest connection state** — if the socket drops, the composer says so and holds the send rather than swallowing the message. On reconnect the client re-joins the room by itself.
 - 👥 **Simulated developers** reply with a realistic typing delay ~40% of the time, tagged `sim`.
 - ✨ **AI message formatting** — polish a messy draft before you send it.
 - 📋 **AI conversation summary** — Overview / Key Points / Vibe, with the answering model named.
@@ -116,7 +118,11 @@ cd mlend    && npm run dev    # :3002
 cd frontend && npm run dev    # :5173
 ```
 
-Open http://localhost:5173 and create an account. There are no seeded users — the store is in-memory and resets when the backend restarts.
+Open http://localhost:5173. The Sign In tab is pre-filled with a seeded demo account (`moeez@querysphere.com` / `password123`) that owns the starter messages in `#general`, so the first click works.
+
+To watch two people talk, sign up as somebody else in a second browser — a private window is enough, since the session lives in `localStorage`. Both appear in each other's "In this channel" list.
+
+The store is in memory: every account except the seeded one disappears when the backend restarts.
 
 ---
 

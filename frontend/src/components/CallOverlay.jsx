@@ -13,16 +13,16 @@ export default function CallOverlay({ user, onClose }) {
         <div className="call-controls">
           <button
             id="call-mute"
-            className={`call-btn mute`}
+            className={`call-btn${muted ? ' is-off' : ''}`}
             onClick={() => setMuted(p => !p)}
             title={muted ? 'Unmute' : 'Mute'}
           >{muted ? '🔇' : '🎤'}</button>
           <button
             id="call-video"
-            className={`call-btn video`}
+            className={`call-btn${videoOff ? ' is-off' : ''}`}
             onClick={() => setVideoOff(p => !p)}
             title={videoOff ? 'Start Video' : 'Stop Video'}
-          >{videoOff ? '📵' : '📹'}</button>
+          >📹</button>
           <button id="call-end" className="call-btn end" onClick={onClose} title="End call">📵</button>
         </div>
         <p className="call-footnote">Voice &amp; video calls coming soon in v2 🚀</p>

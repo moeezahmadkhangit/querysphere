@@ -12,7 +12,7 @@ const EMPTY_QUOTES = [
   "The best conversations start with a simple hello 👋",
 ];
 
-export default function ChatRoom({ room, messages, typingUsers, user, onSend, onStartTyping, onReact, onToggleNav }) {
+export default function ChatRoom({ room, messages, typingUsers, user, connected, onSend, onStartTyping, onReact, onToggleNav }) {
   const [draft,      setDraft]      = useState('');
   const [formatting, setFormatting] = useState(false);
   const [showCall,   setShowCall]   = useState(false);
@@ -28,7 +28,7 @@ export default function ChatRoom({ room, messages, typingUsers, user, onSend, on
   }, [messages]);
 
   const handleSend = () => {
-    if (!draft.trim()) return;
+    if (!draft.trim() || !connected) return;
     onSend(draft);
     setDraft('');
   };
@@ -101,6 +101,15 @@ export default function ChatRoom({ room, messages, typingUsers, user, onSend, on
 
         {/* Input */}
         <div className="input-area">
+          {/* Sending over a closed socket is a silent no-op: the packet is
+              buffered and the draft is cleared, so the message looks sent and
+              simply never appears. Say so, and hold the send. */}
+          {!connected && (
+            <p className="conn-banner" role="status">
+              <span className="conn-dot" />
+              Reconnecting — messages you send now will not be delivered.
+            </p>
+          )}
           <div className="input-box">
             <textarea
               id="qs-message-input"
@@ -121,7 +130,7 @@ export default function ChatRoom({ room, messages, typingUsers, user, onSend, on
               >
                 {formatting ? <span className="spinner" /> : '✨ Format'}
               </button>
-              <button id="qs-send" className="btn-send" onClick={handleSend} disabled={!draft.trim()} title="Send">➤</button>
+              <button id="qs-send" className="btn-send" onClick={handleSend} disabled={!draft.trim() || !connected} title={connected ? 'Send' : 'Reconnecting…'}>➤</button>
             </div>
           </div>
           <p className="input-hint">

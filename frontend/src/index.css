@@ -302,6 +302,14 @@ h1, h2, h3 {
   flex-shrink: 0;
   overflow: hidden;
 }
+/* The channel and DM lists scroll; the wordmark and the account footer stay
+   pinned. Without this a short viewport clips the sign-out button off the
+   bottom with no way to reach it. */
+.sidebar-scroll {
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
+}
 .sidebar-header {
   padding: var(--s-4) var(--s-3);
   display: flex;
@@ -336,8 +344,13 @@ h1, h2, h3 {
   display: flex;
   align-items: center;
   gap: var(--s-2);
+  width: 100%;
   padding: 9px var(--s-2);
+  border: none;
   border-left: 2px solid transparent;
+  background: transparent;
+  font-family: var(--font-sans);
+  text-align: left;
   cursor: pointer;
   transition: color 0.15s var(--ease), background 0.15s var(--ease);
   color: var(--muted);
@@ -345,6 +358,9 @@ h1, h2, h3 {
   border-radius: 0 var(--r-base) var(--r-base) 0;
 }
 .channel-item:hover { color: var(--text); background: var(--surface-2); }
+/* The DM rows, which are a mockup and not clickable. */
+.channel-item.is-static { cursor: default; }
+.channel-item.is-static:hover { color: var(--muted); background: transparent; }
 .channel-item.active {
   color: var(--gold);
   border-left-color: var(--gold);
@@ -441,6 +457,40 @@ h1, h2, h3 {
   border-radius: 50%;
   background: var(--online);
 }
+
+/* Reconnecting. Gold, not red: nothing has failed yet, it wants noticing —
+   and gold is the accent for anything on a human surface. */
+.user-status.is-offline { color: var(--gold); }
+.user-status.is-offline .status-dot {
+  background: var(--gold);
+  animation: pulse-dot 1.2s ease-in-out infinite;
+}
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.25; }
+}
+
+/* Roster count, set beside the section label rather than under it so the
+   list keeps a single left edge with the channels above. */
+.sidebar-section-count {
+  margin-left: var(--s-1);
+  color: var(--muted);
+  letter-spacing: 0;
+}
+.sidebar-empty {
+  padding: var(--s-1) var(--s-2);
+  font-size: var(--t-small);
+  color: var(--faint);
+}
+/* Mono and faint: a label on a row, never mistakable for part of the name. */
+.member-you {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: var(--t-micro);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--faint);
+}
 .btn-logout {
   width: 30px;
   height: 30px;
@@ -482,6 +532,9 @@ h1, h2, h3 {
   font-weight: 500;
   letter-spacing: -0.015em;
   color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .chat-header-desc {
   font-size: var(--t-micro);
@@ -683,6 +736,30 @@ h1, h2, h3 {
   border-top: 1px solid var(--line);
   background: var(--surface);
 }
+
+/* Sits directly above the composer, where the consequence is. A bar pinned to
+   the top of the window would be further from the thing it is about to stop
+   working. */
+.conn-banner {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  margin-bottom: var(--s-2);
+  padding: var(--s-2) var(--s-3);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-base);
+  background: rgb(231 194 125 / 0.06);
+  font-size: var(--t-small);
+  color: var(--gold);
+}
+.conn-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--gold);
+  flex-shrink: 0;
+  animation: pulse-dot 1.2s ease-in-out infinite;
+}
 .input-box {
   display: flex;
   align-items: flex-end;
@@ -795,6 +872,13 @@ h1, h2, h3 {
   font-weight: 500;
   color: var(--text);
   flex: 1;
+  min-width: 0;
+  /* As an overlay the panel is 304px wide and the header also carries
+     Summarize and a close button; without this the title wrapped to two
+     lines and pushed the header to double height. */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .btn-summarize {
   padding: 7px 12px;
@@ -897,48 +981,6 @@ h1, h2, h3 {
 .ai-empty-text { font-size: var(--t-small); line-height: 1.5; max-width: 26ch; }
 .ai-empty-text strong { color: var(--teal); font-weight: 500; }
 
-.members-section { margin-top: var(--s-3); }
-.members-title {
-  font-family: var(--font-mono);
-  font-size: var(--t-micro);
-  letter-spacing: 0.1em;
-  color: var(--faint);
-  text-transform: uppercase;
-  margin-bottom: var(--s-3);
-}
-.member-item {
-  display: flex;
-  align-items: center;
-  gap: var(--s-2);
-  padding: var(--s-1) 0;
-}
-.member-avatar {
-  width: 28px;
-  height: 28px;
-  border-radius: var(--r-pill);
-  background: var(--surface-2);
-  border: 1px solid var(--line);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-family: var(--font-mono);
-  font-size: 10px;
-  color: var(--muted);
-  position: relative;
-  flex-shrink: 0;
-}
-.member-dot {
-  position: absolute;
-  bottom: -1px;
-  right: -1px;
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--online);
-  border: 2px solid var(--surface);
-}
-.member-name { font-size: var(--t-small); color: var(--muted); }
-
 /* ---- Call Overlay ---- */
 .call-overlay {
   position: fixed;
@@ -1006,6 +1048,24 @@ h1, h2, h3 {
   color: var(--muted);
 }
 .call-btn:hover { border-color: var(--gold); }
+/* A muted mic / stopped camera. Struck through rather than swapped for another
+   glyph: the previous "video off" icon was 📵, identical to End call sitting
+   two buttons along. */
+.call-btn.is-off {
+  opacity: 0.45;
+  position: relative;
+}
+.call-btn.is-off::after {
+  content: '';
+  position: absolute;
+  left: 22%;
+  right: 22%;
+  top: 50%;
+  height: 2px;
+  background: var(--error);
+  transform: rotate(-45deg);
+  border-radius: 2px;
+}
 .call-btn.end {
   background: var(--error);
   border-color: var(--error);
@@ -1111,15 +1171,69 @@ h1, h2, h3 {
   .btn-nav { display: flex; }
   .messages-container { padding: var(--s-3); }
   .chat-header, .input-area { padding-inline: var(--s-3); }
+  .chat-header { gap: var(--s-2); }
+  /* Four 44px controls plus a room name is all a 390px header holds. The room
+     description is the line that goes — it is context, and the name above it
+     already says where you are. Every button stays. */
+  .chat-header-desc { display: none; }
   .msg-content { max-width: 78vw; }
-  /* The three call/panel buttons plus ☰ do not fit beside a room name at
-     390px; the call mockups are the ones that can wait. */
-  #qs-call, #qs-video-call { display: none; }
+}
+
+/* ---- Touch ----
+   Keyed on the input device, not on width: a small window on a laptop still has
+   a pointer, and a large tablet does not. Everything a finger has to hit gets
+   the 44px minimum, and anything that was revealed by hover has to be revealed
+   some other way, because there is no hover to reveal it with. */
+@media (hover: none) {
+  /* The quick-reaction row is opacity:0 until :hover on a pointer device. On a
+     touch screen that hover never arrives, which made emoji reactions
+     completely unreachable — the row was there, invisible, and untappable. */
+  .msg-quick-reactions { opacity: 1; }
+  /* Five of these sit in a row under every message. At 44px that row is 236px
+     of a 390px screen — heavy, but they are the only way to react on a touch
+     device, and a target you cannot reliably hit is worse than a wide row. */
+  .quick-reaction {
+    min-width: 44px;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    opacity: 0.8;
+  }
+
+  .btn-icon, .btn-send, .btn-logout {
+    min-width: 44px;
+    min-height: 44px;
+  }
+  .btn-format, .btn-summarize { min-height: 44px; }
+  .auth-tab { min-height: 44px; }
+  .channel-item { min-height: 44px; }
+  /* Wider than it is tall, so 36px of height already gives a comfortable
+     target without turning every chip into a button. */
+  .reaction-chip { min-height: 36px; padding-inline: 12px; }
+  /* The textarea, not just the box around it — tapping the lower half of the
+     input was landing outside the field. */
+  .msg-input { min-height: 40px; }
+  .input-box { align-items: center; }
+  /* "Enter to send · Shift+Enter for a new line" describes a hardware keyboard.
+     On touch there is a Send button right there, and the line costs a row of
+     message space that a short screen cannot spare. */
+  .input-hint { display: none; }
 }
 
 @keyframes slideIn {
   from { transform: translateX(100%); }
   to   { transform: none; }
+}
+
+/* A landscape phone is ~390px tall with the browser chrome removed. Trim the
+   vertical padding so the messages keep the space instead of the frame. */
+@media (max-height: 500px) {
+  .input-area { padding-block: var(--s-2); }
+  .chat-header { padding-block: var(--s-2); }
+  .sidebar-header { padding-block: var(--s-2); }
+  .messages-container { padding-block: var(--s-2); }
 }
 
 @media (prefers-reduced-motion: reduce) {

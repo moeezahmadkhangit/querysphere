@@ -44,12 +44,30 @@ export default function AuthScreen({ onLogin, onRegister, loading, error, setErr
           {tab === 'register' && (
             <div className="form-group">
               <label className="form-label" htmlFor="qs-username">Username</label>
-              <input id="qs-username" className="form-input" type="text" autoComplete="username" placeholder="e.g. stardust_dev" value={username} onChange={e => setUsername(e.target.value)} required />
+              <input id="qs-username" className="form-input" type="text" autoComplete="username" autoCapitalize="none" autoCorrect="off" spellCheck={false} placeholder="e.g. stardust_dev" value={username} onChange={e => setUsername(e.target.value)} required />
             </div>
           )}
           <div className="form-group">
             <label className="form-label" htmlFor="qs-email">Email</label>
-            <input id="qs-email" className="form-input" type="email" autoComplete="email" placeholder="you@example.com" value={email} onChange={e => setEmail(e.target.value)} required />
+            {/* Phone keyboards capitalise the first letter of a text field and offer
+                to autocorrect it. An address typed as "Moeez@..." on a phone and
+                "moeez@..." on a desktop has to reach the same account — the server
+                normalises the address, and these stop the keyboard mangling it in
+                the first place. */}
+            <input
+              id="qs-email"
+              className="form-input"
+              type="email"
+              inputMode="email"
+              autoComplete="email"
+              autoCapitalize="none"
+              autoCorrect="off"
+              spellCheck={false}
+              placeholder="you@example.com"
+              value={email}
+              onChange={e => setEmail(e.target.value)}
+              required
+            />
           </div>
           <div className="form-group">
             <label className="form-label" htmlFor="qs-password">Password</label>

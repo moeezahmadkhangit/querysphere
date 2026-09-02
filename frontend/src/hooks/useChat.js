@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { io } from 'socket.io-client';
-import { chatAPI } from '../services/api';
+import { chatAPI, expireSession } from '../services/api';
 
 const BACKEND = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001';
 
@@ -9,6 +9,7 @@ export function useChat(user) {
   const [activeRoom,   setActiveRoom]   = useState(null);
   const [messages,     setMessages]     = useState([]);
   const [typingUsers,  setTypingUsers]  = useState([]);
+  const [members,      setMembers]      = useState([]);
   const [connected,    setConnected]    = useState(false);
   const socketRef  = useRef(null);
   const typingTimer = useRef(null);
@@ -37,8 +38,35 @@ export function useChat(user) {
     const token = localStorage.getItem('qs_token');
     const socket = io(BACKEND, { auth: { token }, transports: ['websocket', 'polling'] });
     socketRef.current = socket;
-    socket.on('connect',    () => setConnected(true));
+    socket.on('connect', () => {
+      setConnected(true);
+      // A reconnect hands us a fresh socket that is in no rooms, and join_room
+      // only fires when the active room changes. Without this a client that
+      // dropped and came back — server restart, laptop lid, a phone
+      // backgrounding the tab — keeps showing the room and silently receives
+      // nothing from it.
+      const room = activeRoomRef.current;
+      if (room) socket.emit('join_room', room.id);
+    });
     socket.on('disconnect', () => setConnected(false));
+    /**
+     * The handshake middleware rejects a missing or invalid token before the
+     * connection ever opens, and nothing was listening for that. The room
+     * rendered as normal and every send went nowhere — the message was emitted
+     * into a socket that was not connected, so it was dropped without an error
+     * anywhere the user could see.
+     */
+    socket.on('connect_error', (err) => {
+      setConnected(false);
+      if (/auth|token/i.test(err.message || '')) expireSession();
+    });
+    // Who else is actually in this room. Scoped to the room on screen, since
+    // the server broadcasts a roster per room and we may still be joined to
+    // the one we just left while its leave is in flight.
+    socket.on('presence', ({ roomId, members: list }) => {
+      if (roomId !== activeRoomRef.current?.id) return;
+      setMembers(list);
+    });
     socket.on('new_message', ({ roomId, message }) => {
       if (roomId !== activeRoomRef.current?.id) return;
       // The server echoes to everyone in the room, sender included, so guard
@@ -77,6 +105,7 @@ export function useChat(user) {
       setMessages(data.messages);
     }).catch(() => setMessages([]));
     setTypingUsers([]);
+    setMembers([]);
   }, [activeRoom]);
 
   const switchRoom = useCallback((room) => {
@@ -103,5 +132,5 @@ export function useChat(user) {
     socketRef.current.emit('add_reaction', { roomId: activeRoom.id, messageId, emoji });
   }, [activeRoom]);
 
-  return { rooms, activeRoom, messages, typingUsers, connected, switchRoom, sendMessage, startTyping, addReaction };
+  return { rooms, activeRoom, messages, typingUsers, members, connected, switchRoom, sendMessage, startTyping, addReaction };
 }

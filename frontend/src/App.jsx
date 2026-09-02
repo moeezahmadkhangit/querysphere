@@ -7,7 +7,7 @@ import { useChat } from './hooks/useChat';
 
 export default function App() {
   const { user, loading, error, login, register, logout, setError } = useAuth();
-  const { rooms, activeRoom, messages, typingUsers, switchRoom, sendMessage, startTyping, addReaction } = useChat(user);
+  const { rooms, activeRoom, messages, typingUsers, members, connected, switchRoom, sendMessage, startTyping, addReaction } = useChat(user);
   // Below 720px the sidebar is a slide-over rather than a column. Desktop
   // ignores this entirely — the CSS only consults it inside the media query.
   const [navOpen, setNavOpen] = useState(false);
@@ -30,6 +30,8 @@ export default function App() {
         user={user}
         rooms={rooms}
         activeRoom={activeRoom}
+        members={members}
+        connected={connected}
         onSwitch={(room) => { switchRoom(room); setNavOpen(false); }}
         onLogout={logout}
       />
@@ -49,6 +51,7 @@ export default function App() {
         onSend={sendMessage}
         onStartTyping={startTyping}
         onReact={addReaction}
+        connected={connected}
         onToggleNav={() => setNavOpen((o) => !o)}
       />
     </div>

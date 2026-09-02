@@ -31,13 +31,6 @@ function renderMarkdown(text) {
   return html.replace(/(?:<li(?: class="sub")?>.*?<\/li>)+/g, (run) => `<ul>${run}</ul>`);
 }
 
-const MEMBERS = [
-  { id: 'm1', avatar: 'MZ', name: 'Moeez ', online: true },
-  { id: 'm2', avatar: 'BS', name: 'Basim', online: true },
-  { id: 'm3', avatar: 'AD', name: 'Adeel', online: true },
-  { id: 'm4', avatar: 'BL', name: 'Bilawal', online: false },
-];
-
 export default function AISummaryPanel({ messages, onClose }) {
   const [summary, setSummary] = useState('');
   // Which free model actually answered — mlend cascades through several and
@@ -87,19 +80,6 @@ export default function AISummaryPanel({ messages, onClose }) {
             <p className="ai-empty-text">Click <strong>Summarize</strong> to get an AI recap of this conversation</p>
           </div>
         )}
-
-        <div className="members-section">
-          <p className="members-title">Online Members</p>
-          {MEMBERS.map((m) => (
-            <div key={m.id} className="member-item">
-              <div className="member-avatar">
-                {m.avatar}
-                {m.online && <span className="member-dot" />}
-              </div>
-              <span className="member-name">{m.name}</span>
-            </div>
-          ))}
-        </div>
       </div>
     </aside>
   );

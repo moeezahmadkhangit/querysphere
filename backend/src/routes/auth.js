@@ -13,7 +13,9 @@ router.post('/register', (req, res) => {
   if (!username || !email || !password) {
     return res.status(400).json({ error: 'All fields are required' });
   }
-  if (username.length < 2) {
+  // Trim before measuring: '  ' cleared a raw length check and created an
+  // account with a blank display name that every message then rendered under.
+  if (String(username).trim().length < 2) {
     return res.status(400).json({ error: 'Username must be at least 2 characters' });
   }
   if (password.length < 6) {
