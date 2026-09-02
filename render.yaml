@@ -8,9 +8,9 @@
 # Free-plan hours: a free Render account gets 750 instance-hours a month, shared
 # across every free service. That is enough for ONE service to stay up around
 # the clock (~730h), which is why only the backend runs the keep-alive pinger —
-# it holds live sockets and keeps all chat state in memory, so a spin-down
-# disconnects everyone and wipes the data. mlend is stateless and is left to
-# sleep; the cost is a slow first Format/Summarize after an idle spell. To keep
+# it holds the live sockets, and a spin-down disconnects everyone. mlend is
+# stateless and is left to sleep; the cost is a slow first Format/Summarize
+# after an idle spell. To keep
 # mlend warm too, add KEEP_ALIVE_INTERVAL_MS to it — and expect to outrun the
 # free hours, so put one of the two on a paid instance.
 
@@ -27,6 +27,17 @@ services:
       # Generated once by Render and never printed in the repo. The value in
       # .env.example is public and must not be used in production.
       - key: JWT_SECRET
+        generateValue: true
+      # Encrypts message bodies and email addresses in the store file on disk.
+      # Generated separately from JWT_SECRET so the signing key can be rotated
+      # without making every stored message unreadable.
+      #
+      # Render's free plan has no persistent disk: the store file lives in the
+      # container's ephemeral filesystem, so it survives a process restart but
+      # NOT a redeploy or a spin-down. That is the free tier's limit, not a bug
+      # here — attach a disk on a paid instance and point DATA_DIR at it for
+      # history that outlives a deploy.
+      - key: DATA_ENCRYPTION_KEY
         generateValue: true
       # Origins allowed by CORS and the socket.io handshake. Comma-separated,
       # no trailing slashes. List every hostname the frontend answers on —

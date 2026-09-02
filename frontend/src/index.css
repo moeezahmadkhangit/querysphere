@@ -1243,3 +1243,232 @@ h1, h2, h3 {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* ==================================================================
+   People — friends, requests, communities
+   Gold, not teal. Teal in this app means software is talking; every
+   surface below is about other human beings, so it takes the human
+   accent. A teal "Add" button next to somebody's name would quietly
+   undo the one distinction the palette exists to make.
+   ================================================================== */
+
+.people-panel {
+  width: var(--panel-w);
+  background: var(--surface);
+  border-left: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+.people-header {
+  padding: var(--s-3);
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  border-bottom: 1px solid var(--line);
+}
+.people-title {
+  flex: 1;
+  font-family: var(--font-display);
+  font-size: 15px;
+  color: var(--text);
+}
+.people-tabs {
+  display: flex;
+  gap: var(--s-1);
+  padding: var(--s-2) var(--s-2) 0;
+  border-bottom: 1px solid var(--line);
+}
+.people-tab {
+  flex: 1;
+  padding: var(--s-2) var(--s-1);
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: var(--t-micro);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: color 0.18s var(--ease), border-color 0.18s var(--ease);
+}
+.people-tab:hover { color: var(--text); }
+.people-tab.active { color: var(--gold); border-bottom-color: var(--gold); }
+.people-body { flex: 1; overflow-y: auto; padding: var(--s-3); }
+.people-error { margin-bottom: var(--s-2); }
+.people-search { margin-bottom: var(--s-3); }
+
+.person-row {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  padding: var(--s-2);
+  border-radius: var(--r-base);
+  transition: background 0.18s var(--ease);
+}
+.person-row:hover { background: var(--surface-2); }
+.person-row.is-pickable { cursor: pointer; }
+.person-row.is-pickable input { accent-color: var(--gold); cursor: pointer; }
+.person-avatar {
+  width: 30px;
+  height: 30px;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--line);
+  border-radius: var(--r-pill);
+  background: var(--surface-2);
+  font-family: var(--font-mono);
+  font-size: var(--t-micro);
+  color: var(--gold);
+}
+.person-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.person-name {
+  display: flex;
+  align-items: center;
+  gap: var(--s-1);
+  font-size: var(--t-small);
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.person-sub {
+  font-family: var(--font-mono);
+  font-size: var(--t-micro);
+  color: var(--faint);
+}
+.person-actions { display: flex; gap: var(--s-1); flex-shrink: 0; }
+
+.btn-mini {
+  padding: var(--s-1) var(--s-2);
+  border: 1px solid var(--line);
+  border-radius: var(--r-pill);
+  background: transparent;
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: var(--t-micro);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color 0.18s var(--ease), border-color 0.18s var(--ease), background 0.18s var(--ease);
+}
+.btn-mini:hover:not(:disabled) { color: var(--gold); border-color: var(--gold); }
+.btn-mini:disabled { opacity: 0.5; cursor: not-allowed; }
+.btn-mini.primary {
+  color: var(--ink);
+  background: var(--gold);
+  border-color: var(--gold);
+}
+.btn-mini.primary:hover:not(:disabled) { background: var(--gold-bright); color: var(--ink); }
+.btn-mini.is-muted { color: var(--faint); cursor: default; }
+
+.btn-add-people {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  padding: var(--s-2);
+  border: 1px dashed var(--line-strong);
+  border-radius: var(--r-base);
+  background: transparent;
+  color: var(--gold);
+  font-family: var(--font-sans);
+  font-size: var(--t-small);
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.18s var(--ease), border-color 0.18s var(--ease);
+}
+.btn-add-people:hover {
+  background: rgb(var(--gold-rgb) / 0.07);
+  border-color: var(--gold);
+}
+
+.icon-picker { display: flex; flex-wrap: wrap; gap: var(--s-1); }
+.icon-choice {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--line);
+  border-radius: var(--r-base);
+  background: var(--surface-2);
+  font-size: 16px;
+  cursor: pointer;
+  transition: border-color 0.18s var(--ease), background 0.18s var(--ease);
+}
+.icon-choice:hover { border-color: var(--line-strong); }
+.icon-choice.active { border-color: var(--gold); background: rgb(var(--gold-rgb) / 0.1); }
+
+.form-hint {
+  margin-top: var(--s-1);
+  font-family: var(--font-mono);
+  font-size: var(--t-micro);
+  color: var(--faint);
+}
+
+/* A select has to read as the same control as the text inputs beside it. */
+select.form-input {
+  appearance: none;
+  cursor: pointer;
+  background-image: linear-gradient(45deg, transparent 50%, var(--muted) 50%),
+                    linear-gradient(135deg, var(--muted) 50%, transparent 50%);
+  background-position: right 18px center, right 13px center;
+  background-size: 5px 5px, 5px 5px;
+  background-repeat: no-repeat;
+}
+
+/* A direct message is a person: their initials, not a channel glyph. */
+.channel-icon.is-avatar,
+.chat-header-icon.is-avatar {
+  display: inline-grid;
+  place-items: center;
+  border: 1px solid var(--line);
+  border-radius: var(--r-pill);
+  background: var(--surface-2);
+  font-family: var(--font-mono);
+  color: var(--gold);
+}
+.channel-icon.is-avatar { width: 20px; height: 20px; font-size: 9px; }
+.chat-header-icon.is-avatar { width: 32px; height: 32px; font-size: var(--t-micro); }
+
+.btn-load-older {
+  align-self: center;
+  margin-bottom: var(--s-3);
+  padding: var(--s-1) var(--s-3);
+  border: 1px solid var(--line);
+  border-radius: var(--r-pill);
+  background: transparent;
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: var(--t-micro);
+  cursor: pointer;
+  transition: color 0.18s var(--ease), border-color 0.18s var(--ease);
+}
+.btn-load-older:hover:not(:disabled) { color: var(--gold); border-color: var(--gold); }
+.btn-load-older:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* A removed message keeps its place in the thread but stops looking like speech. */
+.msg-row.is-deleted .msg-bubble {
+  background: transparent;
+  border-style: dashed;
+  color: var(--faint);
+  font-style: italic;
+}
+.quick-delete:hover { color: var(--error); }
+
+/* Wider than the AI panel's own breakpoint on purpose: with the sidebar, the
+   AI panel and this one all as columns, the conversation itself is squeezed to
+   about 400px before either panel decides to get out of the way. This is the
+   third column, so it is the one that becomes an overlay first. */
+@media (max-width: 1300px) {
+  .people-panel {
+    position: fixed;
+    inset: 0 0 0 auto;
+    width: min(var(--panel-w), 100vw);
+    z-index: 65;
+    border-left: 1px solid var(--line-strong);
+    animation: slideIn 0.25s var(--ease);
+  }
+}

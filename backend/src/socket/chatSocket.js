@@ -1,12 +1,17 @@
 import jwt from 'jsonwebtoken';
-import { addMessage, rooms } from '../data/store.js';
+import {
+  addMessage,
+  getRoom,
+  canAccess,
+  findUserById,
+  findMessage,
+  deleteMessage,
+  markRead,
+  publicUser,
+} from '../data/store.js';
 
-// Mock developers for simulated real-time conversation replies
-const mockDevs = [
-  { username: 'Basim', avatar: 'BS', userId: 'basim' },
-  { username: 'Adeel', avatar: 'AD', userId: 'adeel' },
-  { username: 'Bilawal', avatar: 'BL', userId: 'bilawal' },
-];
+// The simulated developers, by the id of their real account in the store.
+const SIM_IDS = ['basim', 'adeel', 'bilawal'];
 
 const botReplies = [
   "That's a great point! 🙌",
@@ -17,6 +22,14 @@ const botReplies = [
   "Could you tell me more about that? 👀",
   "100% this! Bookmarking for later 📌",
   "Great question, someone should write a blog post about this 📝",
+];
+
+const dmReplies = [
+  "Ha, nice one. What are you working on today?",
+  "Makes sense to me — send it over when it's ready 👀",
+  "I'm around if you want to pair on that 🙌",
+  "Good shout. I'll take a look this afternoon.",
+  "Honestly that's the cleanest way to do it 💯",
 ];
 
 const typingUsers = new Map(); // roomId => Set of userIds
@@ -62,13 +75,47 @@ function removeMember(roomId, userId) {
   if (members.size === 0) presence.delete(roomId);
 }
 
+function buildMessage(sender, text, extra = {}) {
+  return {
+    id: `msg_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+    userId: sender.id,
+    username: sender.username,
+    avatar: sender.avatar,
+    text,
+    timestamp: new Date().toISOString(),
+    reactions: [],
+    ...extra,
+  };
+}
+
+/** Post as one of the simulated developers, after a visible typing pause. */
+function simReply(io, room, sim, text, { typingMs = 1500, delayMs = 800 } = {}) {
+  setTimeout(() => {
+    io.to(room.id).emit('typing_start', { userId: sim.id, username: sim.username });
+    setTimeout(() => {
+      io.to(room.id).emit('typing_stop', { userId: sim.id });
+      const message = addMessage(room.id, buildMessage(sim, text, { isBot: true }));
+      if (!message) return;
+      io.to(room.id).emit('new_message', { roomId: room.id, message });
+      // Members who do not have the room open still need their unread badge to
+      // move, and they are not in the Socket.io room to receive the line above.
+      for (const memberId of room.memberIds ?? []) {
+        io.to(`user:${memberId}`).emit('room_activity', { roomId: room.id });
+      }
+    }, typingMs);
+  }, delayMs);
+}
+
 export function initSocket(io) {
-  // Auth middleware for socket
   io.use((socket, next) => {
     const token = socket.handshake.auth?.token;
     if (!token) return next(new Error('Authentication required'));
     try {
-      const user = jwt.verify(token, process.env.JWT_SECRET);
+      const payload = jwt.verify(token, process.env.JWT_SECRET);
+      // Resolve the live record: the token now carries only an id, and room
+      // access is decided against the friend list and membership on it.
+      const user = findUserById(payload.id);
+      if (!user) return next(new Error('Invalid token'));
       socket.user = user;
       next();
     } catch {
@@ -79,32 +126,49 @@ export function initSocket(io) {
   io.on('connection', (socket) => {
     console.log(`🟢 ${socket.user.username} connected`);
 
+    // A room per person, so the REST routes can push friend requests and
+    // invitations to every tab this account has open. See socket/notify.js.
+    socket.join(`user:${socket.user.id}`);
+
     // Every room this socket is currently in, so a disconnect can clean up
     // after itself. `currentRoom` only ever held the last one, which left the
     // person listed as present in every room they had visited.
     socket.joinedRooms = new Set();
 
-    // Join a room
+    /**
+     * Resolve a room the caller is allowed to be in, or nothing.
+     *
+     * Socket.io has no equivalent of an HTTP middleware chain, so before this
+     * existed every handler took the client's `roomId` on trust — a crafted
+     * `join_room` for somebody else's direct message id joined it and then
+     * received every message sent in it. Each handler now goes through here.
+     */
+    const authorize = (roomId) => {
+      const room = getRoom(roomId);
+      if (!room || !canAccess(socket.user.id, room)) return null;
+      return room;
+    };
+
     socket.on('join_room', (roomId) => {
-      if (!rooms.has(roomId)) return;
-      socket.join(roomId);
-      socket.joinedRooms.add(roomId);
+      const room = authorize(roomId);
+      if (!room) return;
 
-      if (!typingUsers.has(roomId)) typingUsers.set(roomId, new Set());
+      socket.join(room.id);
+      socket.joinedRooms.add(room.id);
+      if (!typingUsers.has(room.id)) typingUsers.set(room.id, new Set());
 
-      addMember(roomId, socket.user);
+      addMember(room.id, socket.user);
+      markRead(socket.user, room.id);
 
-      // Notify others
-      socket.to(roomId).emit('user_joined', {
+      socket.to(room.id).emit('user_joined', {
         userId: socket.user.id,
         username: socket.user.username,
       });
       // Broadcast to the whole room, joiner included: this is also how the
       // arriving client receives the roster that already existed.
-      emitPresence(io, roomId);
+      emitPresence(io, room.id);
     });
 
-    // Leave a room
     socket.on('leave_room', (roomId) => {
       if (!socket.joinedRooms.has(roomId)) return;
       socket.joinedRooms.delete(roomId);
@@ -117,50 +181,67 @@ export function initSocket(io) {
       socket.leave(roomId);
     });
 
-    // Send a message
     socket.on('send_message', ({ roomId, text }) => {
-      if (!text?.trim() || !roomId) return;
+      const room = authorize(roomId);
+      if (!room) return;
+      if (typeof text !== 'string' || !text.trim()) return;
 
-      const message = {
-        id: `msg_${Date.now()}_${Math.random().toString(36).slice(2, 5)}`,
-        userId: socket.user.id,
-        username: socket.user.username,
-        avatar: socket.user.avatar,
-        text: text.trim(),
-        timestamp: new Date().toISOString(),
-        reactions: [],
-      };
+      // Bound the body. Nothing stopped a client posting a megabyte of text
+      // into a store that is written to disk and echoed to every member.
+      const body = text.trim().slice(0, 4000);
 
-      addMessage(roomId, message);
-      io.to(roomId).emit('new_message', { roomId, message });
+      const message = addMessage(room.id, buildMessage(socket.user, body));
+      if (!message) return;
 
-      // Simulate developer reply ~40% of the time with a delay
-      if (Math.random() < 0.4) {
-        const dev = mockDevs[Math.floor(Math.random() * mockDevs.length)];
-        setTimeout(() => {
-          // Show typing
-          io.to(roomId).emit('typing_start', { userId: dev.userId, username: dev.username });
-          setTimeout(() => {
-            io.to(roomId).emit('typing_stop', { userId: dev.userId });
-            const botMessage = {
-              id: `msg_bot_${Date.now()}`,
-              userId: dev.userId,
-              username: dev.username,
-              avatar: dev.avatar,
-              text: botReplies[Math.floor(Math.random() * botReplies.length)],
-              timestamp: new Date().toISOString(),
-              reactions: [],
-              isBot: true,
-            };
-            addMessage(roomId, botMessage);
-            io.to(roomId).emit('new_message', { roomId, message: botMessage });
-          }, 1500);
-        }, 800);
+      io.to(room.id).emit('new_message', { roomId: room.id, message });
+      markRead(socket.user, room.id);
+
+      // Nudge the unread badge for members who are not currently in the room.
+      for (const memberId of room.memberIds ?? []) {
+        if (memberId === socket.user.id) continue;
+        io.to(`user:${memberId}`).emit('room_activity', { roomId: room.id });
+      }
+
+      if (room.type === 'dm') {
+        // A direct message to one of the simulated developers always gets an
+        // answer — a 40% chance in a one-to-one conversation reads as being
+        // ignored rather than as realism.
+        const partnerId = [...room.memberIds].find((id) => id !== socket.user.id);
+        const partner = findUserById(partnerId);
+        if (partner?.isSim) {
+          simReply(io, room, partner, dmReplies[Math.floor(Math.random() * dmReplies.length)], { delayMs: 1000 });
+        }
+        return;
+      }
+
+      // Public channels keep the ambient chatter. Communities do not: they are
+      // rooms of real people, and a bot interjecting in one is noise.
+      if (room.type === 'channel' && Math.random() < 0.4) {
+        const sim = findUserById(SIM_IDS[Math.floor(Math.random() * SIM_IDS.length)]);
+        if (sim) simReply(io, room, sim, botReplies[Math.floor(Math.random() * botReplies.length)]);
       }
     });
 
-    // Typing indicators
+    // Removing your own message. There was no way to take anything back at all.
+    socket.on('delete_message', ({ roomId, messageId }) => {
+      const room = authorize(roomId);
+      if (!room) return;
+      const message = findMessage(room.id, messageId);
+      // Ownership, not membership: being in the room is not authority over
+      // what somebody else said in it.
+      if (!message || message.userId !== socket.user.id) return;
+      deleteMessage(room, message);
+      io.to(room.id).emit('message_deleted', { roomId: room.id, messageId, text: message.text });
+    });
+
+    socket.on('mark_read', ({ roomId }) => {
+      const room = authorize(roomId);
+      if (!room) return;
+      markRead(socket.user, room.id);
+    });
+
     socket.on('typing_start', ({ roomId }) => {
+      if (!authorize(roomId)) return;
       socket.to(roomId).emit('typing_start', {
         userId: socket.user.id,
         username: socket.user.username,
@@ -168,19 +249,29 @@ export function initSocket(io) {
     });
 
     socket.on('typing_stop', ({ roomId }) => {
+      if (!authorize(roomId)) return;
       socket.to(roomId).emit('typing_stop', { userId: socket.user.id });
     });
 
-    // Add reaction
     socket.on('add_reaction', ({ roomId, messageId, emoji }) => {
-      const room = rooms.get(roomId);
+      const room = authorize(roomId);
       if (!room) return;
-      const msg = room.messages.find((m) => m.id === messageId);
-      if (!msg) return;
-      const existing = msg.reactions.find((r) => r.emoji === emoji);
+      // An arbitrary client string was stored and re-broadcast verbatim; cap it
+      // so the reaction chip cannot be used to smuggle a paragraph into the UI.
+      const symbol = String(emoji ?? '').slice(0, 8);
+      if (!symbol) return;
+
+      const msg = findMessage(room.id, messageId);
+      if (!msg || msg.deleted) return;
+
+      const existing = msg.reactions.find((r) => r.emoji === symbol);
       if (existing) existing.count++;
-      else msg.reactions.push({ emoji, count: 1 });
-      io.to(roomId).emit('reaction_updated', { messageId, reactions: msg.reactions });
+      else msg.reactions.push({ emoji: symbol, count: 1 });
+      io.to(room.id).emit('reaction_updated', { messageId, reactions: msg.reactions });
+    });
+
+    socket.on('whoami', (ack) => {
+      if (typeof ack === 'function') ack(publicUser(socket.user));
     });
 
     socket.on('disconnect', () => {

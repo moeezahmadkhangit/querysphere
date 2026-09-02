@@ -1,4 +1,13 @@
-export default function Sidebar({ user, rooms, activeRoom, members = [], connected, onSwitch, onLogout }) {
+const SECTIONS = [
+  { type: 'channel',   label: 'Channels',        empty: 'No channels.' },
+  { type: 'community', label: 'Communities',     empty: 'None yet — start one from ＋ Add people.' },
+  { type: 'dm',        label: 'Direct messages', empty: 'Add someone to start a conversation.' },
+];
+
+export default function Sidebar({
+  user, rooms, activeRoom, members = [], connected,
+  requestCount = 0, onSwitch, onLogout, onOpenPeople,
+}) {
   // You first, then everyone else alphabetically, so the list does not reshuffle
   // under the reader every time somebody's socket reconnects.
   const roster = [...members].sort((a, b) => {
@@ -18,26 +27,51 @@ export default function Sidebar({ user, rooms, activeRoom, members = [], connect
           below stay put, so sign-out is reachable on a viewport too short to
           show every channel. */}
       <div className="sidebar-scroll">
-        <nav className="sidebar-section" aria-label="Channels">
-          <p className="sidebar-section-label" id="qs-channels-label">Channels</p>
-          {rooms.map((room) => (
-            // A button, not a div: these were plain divs with an onClick, which
-            // meant no keyboard focus, no Enter/Space, and nothing announced to
-            // a screen reader. Switching rooms was mouse-only.
-            <button
-              key={room.id}
-              type="button"
-              id={`channel-${room.id}`}
-              className={`channel-item${activeRoom?.id === room.id ? ' active' : ''}`}
-              aria-current={activeRoom?.id === room.id ? 'page' : undefined}
-              onClick={() => onSwitch(room)}
-            >
-              <span className="channel-icon">{room.icon || '#'}</span>
-              <span className="channel-name">{room.name}</span>
-              {room.id === 'general' && <span className="channel-badge">3</span>}
-            </button>
-          ))}
-        </nav>
+        <div className="sidebar-section">
+          <button id="qs-open-people" type="button" className="btn-add-people" onClick={onOpenPeople}>
+            <span className="channel-icon">＋</span>
+            <span className="channel-name">Add people</span>
+            {/* An unanswered friend request is invisible everywhere else in the
+                app, so the count has to live on the button that opens it. */}
+            {requestCount > 0 && <span className="channel-badge">{requestCount}</span>}
+          </button>
+        </div>
+
+        {SECTIONS.map(({ type, label, empty }) => {
+          const list = rooms.filter((room) => room.type === type);
+          return (
+            <nav className="sidebar-section" key={type} aria-label={label}>
+              <p className="sidebar-section-label">
+                {label}
+                {list.length > 0 && <span className="sidebar-section-count">{list.length}</span>}
+              </p>
+
+              {list.length === 0 && <p className="sidebar-empty">{empty}</p>}
+
+              {list.map((room) => (
+                // A button, not a div: these were plain divs with an onClick, which
+                // meant no keyboard focus, no Enter/Space, and nothing announced to
+                // a screen reader. Switching rooms was mouse-only.
+                <button
+                  key={room.id}
+                  type="button"
+                  id={`channel-${room.id}`}
+                  className={`channel-item${activeRoom?.id === room.id ? ' active' : ''}`}
+                  aria-current={activeRoom?.id === room.id ? 'page' : undefined}
+                  onClick={() => onSwitch(room)}
+                >
+                  <span className={`channel-icon${type === 'dm' ? ' is-avatar' : ''}`}>{room.icon || '#'}</span>
+                  <span className="channel-name">{room.name}</span>
+                  {/* A real count from the server's read state. This slot used to
+                      be a literal 3 pinned to #general forever. */}
+                  {room.unread > 0 && activeRoom?.id !== room.id && (
+                    <span className="channel-badge">{room.unread > 99 ? '99+' : room.unread}</span>
+                  )}
+                </button>
+              ))}
+            </nav>
+          );
+        })}
 
         {/* Real presence, from the server's roster for this room.
             This slot used to hold four hard-coded names with hard-coded green
@@ -45,7 +79,7 @@ export default function Sidebar({ user, rooms, activeRoom, members = [], connect
             could be signed in and neither would ever know the other was there. */}
         <div className="sidebar-section">
           <p className="sidebar-section-label">
-            In this channel
+            In this {activeRoom?.type === 'dm' ? 'conversation' : 'room'}
             {roster.length > 0 && <span className="sidebar-section-count">{roster.length}</span>}
           </p>
           {roster.length === 0 ? (

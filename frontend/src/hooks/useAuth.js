@@ -1,12 +1,5 @@
 import { useState, useCallback, useEffect } from 'react';
-import { authAPI, clearSession, AUTH_EXPIRED_EVENT } from '../services/api';
-
-function getStoredUser() {
-  try {
-    const raw = localStorage.getItem('qs_user');
-    return raw ? JSON.parse(raw) : null;
-  } catch { return null; }
-}
+import { authAPI, clearSession, saveSession, saveUser, getStoredUser, AUTH_EXPIRED_EVENT } from '../services/api';
 
 export function useAuth() {
   const [user, setUser]       = useState(getStoredUser);
@@ -30,13 +23,14 @@ export function useAuth() {
     authAPI.me()
       .then(({ data }) => {
         setUser(data.user);
-        localStorage.setItem('qs_user', JSON.stringify(data.user));
+        saveUser(data.user);
       })
       .catch(() => {});
   }, []);
 
-  // Raised by the response interceptor, and by the socket when its handshake
-  // is rejected. Both funnel here so there is one way to be signed out.
+  // Raised by the response interceptor, by the socket when its handshake is
+  // rejected, and by a sign-out in another tab. All funnel here so there is one
+  // way to be signed out.
   useEffect(() => {
     const onExpired = () => {
       setUser((current) => {
@@ -52,8 +46,7 @@ export function useAuth() {
     setLoading(true); setError('');
     try {
       const { data } = await authAPI.login({ email, password });
-      localStorage.setItem('qs_token', data.token);
-      localStorage.setItem('qs_user', JSON.stringify(data.user));
+      saveSession(data.token, data.user);
       setUser(data.user);
       return true;
     } catch (err) {
@@ -66,8 +59,7 @@ export function useAuth() {
     setLoading(true); setError('');
     try {
       const { data } = await authAPI.register({ username, email, password });
-      localStorage.setItem('qs_token', data.token);
-      localStorage.setItem('qs_user', JSON.stringify(data.user));
+      saveSession(data.token, data.user);
       setUser(data.user);
       return true;
     } catch (err) {

@@ -12,7 +12,11 @@ const EMPTY_QUOTES = [
   "The best conversations start with a simple hello 👋",
 ];
 
-export default function ChatRoom({ room, messages, typingUsers, user, connected, onSend, onStartTyping, onReact, onToggleNav }) {
+export default function ChatRoom({
+  room, messages, typingUsers, user, connected,
+  hasMore, loadingOlder, onLoadOlder,
+  onSend, onStartTyping, onReact, onDelete, onToggleNav, onOpenPeople,
+}) {
   const [draft,      setDraft]      = useState('');
   const [formatting, setFormatting] = useState(false);
   const [showCall,   setShowCall]   = useState(false);
@@ -23,9 +27,18 @@ export default function ChatRoom({ room, messages, typingUsers, user, connected,
   const bottomRef = useRef(null);
   const quote = EMPTY_QUOTES[Math.floor(Math.random() * EMPTY_QUOTES.length)];
 
+  /**
+   * Follow the conversation, but only when it grows at the bottom.
+   *
+   * Scrolling on any change to `messages` meant loading older history yanked
+   * the reader straight back down to the newest message — the one action that
+   * must not scroll is the one that scrolled hardest. Keyed on the id of the
+   * last message instead, which does not change when a page is prepended.
+   */
+  const lastId = messages[messages.length - 1]?.id;
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+  }, [lastId]);
 
   const handleSend = () => {
     if (!draft.trim() || !connected) return;
@@ -64,12 +77,17 @@ export default function ChatRoom({ room, messages, typingUsers, user, connected,
         {/* Header */}
         <div className="chat-header">
           <button id="qs-toggle-nav" className="btn-icon btn-nav" title="Channels" onClick={onToggleNav}>☰</button>
-          <span className="chat-header-icon">{room.icon || '💬'}</span>
+          <span className={`chat-header-icon${room.type === 'dm' ? ' is-avatar' : ''}`}>{room.icon || '💬'}</span>
           <div className="chat-header-info">
-            <div className="chat-header-name">{room.name}</div>
+            <div className="chat-header-name">
+              {room.type === 'channel' ? `#${room.name}` : room.name}
+            </div>
             <div className="chat-header-desc">{room.description}</div>
           </div>
           <div className="header-actions">
+            {room.type === 'community' && (
+              <button id="qs-invite" className="btn-icon" title="Add people to this community" onClick={onOpenPeople}>👥</button>
+            )}
             <button id="qs-call" className="btn-icon" title="Start call" onClick={() => setShowCall(true)}>📞</button>
             <button id="qs-video-call" className="btn-icon" title="Video call" onClick={() => setShowCall(true)}>📹</button>
             <button id="qs-toggle-panel" className="btn-icon" title="AI Panel" onClick={() => setShowPanel(p => !p)}>🤖</button>
@@ -85,14 +103,24 @@ export default function ChatRoom({ room, messages, typingUsers, user, connected,
               <p>Be the first to say something!</p>
             </div>
           ) : (
-            messages.map((msg) => (
-              <MessageBubble
-                key={msg.id}
-                message={msg}
-                isOwn={msg.userId === user?.id}
-                onReact={onReact}
-              />
-            ))
+            <>
+              {/* The room keeps more than one screen of history; without this
+                  there was no way to reach any of it. */}
+              {hasMore && (
+                <button className="btn-load-older" onClick={onLoadOlder} disabled={loadingOlder}>
+                  {loadingOlder ? 'Loading…' : '↑ Older messages'}
+                </button>
+              )}
+              {messages.map((msg) => (
+                <MessageBubble
+                  key={msg.id}
+                  message={msg}
+                  isOwn={msg.userId === user?.id}
+                  onReact={onReact}
+                  onDelete={onDelete}
+                />
+              ))}
+            </>
           )}
           <div ref={bottomRef} />
         </div>
@@ -114,7 +142,7 @@ export default function ChatRoom({ room, messages, typingUsers, user, connected,
             <textarea
               id="qs-message-input"
               className="msg-input"
-              placeholder={`Message #${room.name}…`}
+              placeholder={room.type === 'channel' ? `Message #${room.name}…` : `Message ${room.name}…`}
               value={draft}
               rows={1}
               onChange={(e) => { setDraft(e.target.value); onStartTyping(); }}

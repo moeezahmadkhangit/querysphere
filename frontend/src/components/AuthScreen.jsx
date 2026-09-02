@@ -7,14 +7,34 @@ const QUOTES = [
   "Connect, share, and grow together 🤝",
 ];
 
+// The seeded demo account, so the first click on a fresh install works.
+const DEMO = { email: 'moeez@querysphere.com', password: 'password123' };
+
 export default function AuthScreen({ onLogin, onRegister, loading, error, setError }) {
   const [tab,      setTab]      = useState('login');
-  const [username, setUsername] = useState('MOeez');
-  const [email,    setEmail]    = useState('moeez@querysphere.com');
-  const [password, setPassword] = useState('password123');
+  const [username, setUsername] = useState('');
+  const [email,    setEmail]    = useState(DEMO.email);
+  const [password, setPassword] = useState(DEMO.password);
   const quote = QUOTES[Math.floor(Math.random() * QUOTES.length)];
 
-  const handleTab = (t) => { setTab(t); setError(''); };
+  /**
+   * Switching to Sign Up empties the demo credentials out of the form.
+   *
+   * They were pre-filled for both tabs, so the very first thing a new person
+   * did — press Sign Up — submitted the demo account's own address and came
+   * back "Email already registered". The one path the app most needed to work
+   * was the one guaranteed to fail. Going back to Sign In restores them, which
+   * is the case the pre-fill was for.
+   */
+  const handleTab = (t) => {
+    setTab(t);
+    setError('');
+    if (t === 'register') {
+      setEmail(''); setPassword(''); setUsername('');
+    } else {
+      setEmail(DEMO.email); setPassword(DEMO.password);
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -71,7 +91,21 @@ export default function AuthScreen({ onLogin, onRegister, loading, error, setErr
           </div>
           <div className="form-group">
             <label className="form-label" htmlFor="qs-password">Password</label>
-            <input id="qs-password" className="form-input" type="password" autoComplete={tab === 'login' ? 'current-password' : 'new-password'} placeholder="••••••••" value={password} onChange={e => setPassword(e.target.value)} required />
+            <input
+              id="qs-password"
+              className="form-input"
+              type="password"
+              autoComplete={tab === 'login' ? 'current-password' : 'new-password'}
+              placeholder="••••••••"
+              value={password}
+              onChange={e => setPassword(e.target.value)}
+              minLength={tab === 'register' ? 8 : undefined}
+              required
+            />
+            {/* Say the rule before the server has to. The form used to accept
+                six characters and let the request come back with the real
+                minimum, which reads as the app changing its mind. */}
+            {tab === 'register' && <p className="form-hint">At least 8 characters.</p>}
           </div>
           {error && <p className="auth-error">⚠️ {error}</p>}
           <button id="qs-auth-submit" className="btn-primary" type="submit" disabled={loading}>

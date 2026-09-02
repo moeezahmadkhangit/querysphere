@@ -56,3 +56,7 @@ out/
 .next/
 .nuxt/
 .cache/
+
+# Encrypted local store written by the backend (messages, accounts)
+.data/
+**/.data/

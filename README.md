@@ -59,16 +59,40 @@ It sends one real request per model and prints latency and output. A run where o
 
 ## ✨ Features
 
-- 🔐 **JWT auth** — register and sign in. The stored session is checked against the server on every load, so an expired token signs you out with a reason instead of rendering a shell whose every request fails.
+- 🔐 **JWT auth** — register and sign in. The stored session is checked against the server on every load, so an expired token signs you out with a reason instead of rendering a shell whose every request fails. Rate-limited, constant-time, and bcrypt at cost 12.
+- 👥 **Add people** — search the directory by name (or by an exact email address), send a request, and answer the ones you get. The request arrives on the other person's screen live.
+- 💡 **People you may know** — a transparent score over the graph the app already has: mutual friends ×3, shared communities ×2, then recency. No model, nothing to train.
+- ✉️ **Direct messages** — opened the moment a request is accepted, and private: a room you are not in answers 404 to the REST call and ignores the socket join.
+- 🌐 **Communities** — name it, pick an icon, choose who comes. Any member can bring somebody else in; everyone already inside sees the new arrival without refreshing.
 - 📡 **Real-time chat** over Socket.io — channels, typing indicators, emoji reactions, all of which cross between real users.
+- 🔢 **Real unread counts and history paging** — per-person read state on the server, and ↑ Older messages walks back through the stored backlog.
+- 🗑 **Delete your own messages** — and only your own; the server checks authorship rather than trusting a hidden button.
 - 🟢 **Real presence** — "In this channel" is the server's live roster, not a drawing. Open a second browser, sign in as somebody else, and each sees the other appear.
 - 🔌 **Honest connection state** — if the socket drops, the composer says so and holds the send rather than swallowing the message. On reconnect the client re-joins the room by itself.
-- 👥 **Simulated developers** reply with a realistic typing delay ~40% of the time, tagged `sim`.
+- 👥 **Simulated developers** are real accounts now, not literals in a socket handler — searchable, suggestible, and they answer a direct message every time (a 40% chance in a one-to-one conversation reads as being ignored). They still interject in the public channels ~40% of the time, tagged `sim`, and never in a community.
 - ✨ **AI message formatting** — polish a messy draft before you send it.
 - 📋 **AI conversation summary** — Overview / Key Points / Vibe, with the answering model named.
 - 🛡️ **Local fallbacks** for both AI features when the free tier is down.
 - 📞 **Call overlay** — a UI mockup, not a working call.
 - 📱 **Narrow screens** — the sidebar and AI panel become slide-overs rather than disappearing.
+
+---
+
+## 🔒 Where the messages live
+
+The store is a `Map` in the backend process, mirrored to **one encrypted JSON file** (`backend/.data/querysphere.json`) so that a restart does not take everybody's history with it. It is not a database and does not pretend to be one — a single process owns the file and rewrites it, debounced, on change.
+
+**Message bodies and email addresses are encrypted with AES-256-GCM before they are written.** The key comes from `DATA_ENCRYPTION_KEY`; leave it unset and it is derived from `JWT_SECRET`, which works but ties the two together — rotating the signing key would then make every stored message unreadable. The bcrypt hashes are *not* encrypted: they are already digests, and encrypting them would only mean a lost key locks every account out. What the file looks like:
+
+```json
+{"id":"user_...","username":"Moeez","email":"encv1.PR3gTkMD…","password":"$2b$12$…"}
+```
+
+**Access control is one function.** `canAccess(userId, room)` is enforced on the REST room list, the message history *and* the socket join, so there is no path that returns a room you are not in. A room you may not see and a room that does not exist answer identically — distinguishing them would tell an outsider that a given two-person conversation exists, which is most of what they wanted to know.
+
+**The browser keeps almost nothing.** Only a token and `{id, username, avatar}` — not your email. Messages, rooms and friend lists live in React state for the life of the tab and are gone when it closes; caching a conversation in `localStorage` would leave it readable by any script on the origin and sitting on the disk of a shared computer long after sign-out. Signing out sweeps the whole `qs_` namespace from both `localStorage` and `sessionStorage`, and propagates to every other open tab.
+
+**On a free host this file is ephemeral.** Render's free plan has no persistent disk: the store survives a process restart but not a redeploy or a spin-down. Attach a disk on a paid instance and point `DATA_DIR` at it for history that outlives a deploy.
 
 ---
 
@@ -100,7 +124,7 @@ OPENROUTER_API_KEY=sk-or-v1-...
 
 Leave it unset and everything still runs — you just get the local fallbacks instead of model output.
 
-`backend/.env` needs `JWT_SECRET`; the example file has a usable value. The server exits immediately with a clear message if it is missing.
+`backend/.env` needs `JWT_SECRET`; the example file has a usable value. The server exits immediately with a clear message if it is missing, if it is too short, or if the placeholder is still in place in production. `DATA_ENCRYPTION_KEY` is optional locally and worth setting before you deploy.
 
 **2. Install.**
 
@@ -122,7 +146,7 @@ Open http://localhost:5173. The Sign In tab is pre-filled with a seeded demo acc
 
 To watch two people talk, sign up as somebody else in a second browser — a private window is enough, since the session lives in `localStorage`. Both appear in each other's "In this channel" list.
 
-The store is in memory: every account except the seeded one disappears when the backend restarts.
+Accounts, friendships, communities and messages now survive a backend restart — see **Where the messages live** above for the file they are written to and how it is encrypted.
 
 ---
 
