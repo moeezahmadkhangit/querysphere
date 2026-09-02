@@ -1,0 +1,58 @@
+# Keep the Render backend awake from outside it.
+#
+# The backend pings itself every five minutes, which stops Render idling it out
+# after fifteen. But a self-ping can only PREVENT a spin-down, never recover
+# from one: once the instance is stopped its timers are stopped with it, and
+# nothing inside the container can wake it. A deploy, a crash loop or a blip in
+# Render's own scheduling is enough to leave it asleep until the next visitor
+# eats a cold start — which for a socket server means everyone is disconnected
+# and the first person back waits close to a minute.
+#
+# This is the outside layer: a request from GitHub's runners that arrives
+# whether or not the instance is currently up, and wakes it if it is not.
+#
+# ONLY the backend is pinged, deliberately. Render's free instance-hours are 750
+# a month for the whole workspace and a service kept up around the clock burns
+# about 730 of them. Keeping mlend awake as well is roughly 1460 hours, so the
+# allowance runs out mid-month and Render suspends BOTH services. mlend is
+# stateless and holds no sockets, so it is left to sleep and pays for it with a
+# slow first Format/Summarize after an idle spell.
+#
+# Two things worth knowing about GitHub's scheduler: cron here is best-effort
+# and can be delayed by several minutes under load (hence ten, not fourteen),
+# and a scheduled workflow is disabled automatically after 60 days without any
+# repository activity. Re-enable it from the Actions tab if that happens.
+
+name: Keep Render awake
+
+on:
+  schedule:
+    - cron: '*/10 * * * *'
+  workflow_dispatch: # so it can be fired by hand after a deploy
+
+# The URL is a repository variable, so a rename of the Render service is a
+# settings change rather than a commit. Defaults to the current hostname.
+env:
+  BACKEND_URL: ${{ vars.BACKEND_URL || 'https://querysphere-backend.onrender.com' }}
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Ping the backend health check
+        run: |
+          # --max-time 90: a cold start on a free instance is slow, and the
+          # request that WAKES it is the one most likely to be slow. Failing it
+          # at the default timeout would report the wake-up as an error.
+          code=$(curl -sS -o /dev/null -m 90 --retry 2 --retry-delay 15 \
+                      -w '%{http_code}' \
+                      -H 'user-agent: querysphere-keepalive-actions' \
+                      "$BACKEND_URL/health")
+          echo "$BACKEND_URL/health -> HTTP $code"
+          # Any answer at all means the instance is awake, which is the job.
+          # Only a total failure to reach it is worth a red run.
+          if [ -z "$code" ] || [ "$code" = "000" ]; then
+            echo "::error::No response from $BACKEND_URL"
+            exit 1
+          fi

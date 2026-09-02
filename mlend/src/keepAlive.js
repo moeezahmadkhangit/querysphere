@@ -15,13 +15,35 @@
  * host. With neither set (local dev) the pinger stays off.
  */
 
+/**
+ * Enabled only by an explicit opt-in, never by the host's own environment.
+ *
+ * The pinger used to start whenever a public URL could be resolved — and on
+ * Render that is always, because RENDER_EXTERNAL_URL is injected into every
+ * service automatically. So both services kept themselves awake around the
+ * clock: roughly 1460 instance-hours a month against a free allowance of 750,
+ * shared across the whole workspace. The hours run out in the middle of the
+ * month and Render suspends the free services, which takes down the very
+ * backend the pinger exists to protect.
+ *
+ * Setting KEEP_ALIVE_INTERVAL_MS or KEEP_ALIVE_URL is a decision somebody made
+ * on purpose. RENDER_EXTERNAL_URL is not, so on its own it no longer counts —
+ * it is still where the URL comes from once the pinger is switched on.
+ */
+const OPT_IN = process.env.KEEP_ALIVE_INTERVAL_MS || process.env.KEEP_ALIVE_URL;
+
 const INTERVAL_MS = Number(process.env.KEEP_ALIVE_INTERVAL_MS) || 5 * 60 * 1000;
 
 export function startKeepAlive(path = '/health') {
+  if (!OPT_IN) {
+    console.log('💤 Keep-alive off (set KEEP_ALIVE_INTERVAL_MS to switch it on)');
+    return null;
+  }
+
   const base = process.env.KEEP_ALIVE_URL || process.env.RENDER_EXTERNAL_URL;
 
   if (!base) {
-    console.log('💤 Keep-alive off (no KEEP_ALIVE_URL / RENDER_EXTERNAL_URL)');
+    console.log('💤 Keep-alive off (no KEEP_ALIVE_URL / RENDER_EXTERNAL_URL to ping)');
     return null;
   }
 

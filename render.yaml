@@ -23,6 +23,9 @@ services:
     buildCommand: npm install
     startCommand: npm start
     healthCheckPath: /health
+    # Every push to the tracked branch redeploys. This is Render's default; it
+    # is written down so that turning it off is a visible decision.
+    autoDeploy: true
     envVars:
       # Generated once by Render and never printed in the repo. The value in
       # .env.example is public and must not be used in production.
@@ -46,7 +49,16 @@ services:
       #   https://querysphere.moeezahmadkhan.com,https://querysphere.vercel.app
       - key: FRONTEND_URL
         sync: false
-      # Self-ping cadence. Render idles a free service out after ~15 minutes.
+      # Self-ping cadence, and the switch that turns the pinger on at all.
+      # Render idles a free service out after ~15 minutes without traffic.
+      #
+      # Setting this ONLY here is what keeps mlend asleep. The pinger used to
+      # start by itself wherever RENDER_EXTERNAL_URL existed — which is every
+      # Render service — so both stayed up around the clock and burned about
+      # 1460 of the workspace's 750 free instance-hours a month.
+      #
+      # A self-ping cannot recover from a spin-down that has already happened.
+      # .github/workflows/keep-alive.yml pings from outside for that case.
       - key: KEEP_ALIVE_INTERVAL_MS
         value: "300000"
       # KEEP_ALIVE_URL is not needed here: Render injects RENDER_EXTERNAL_URL.
@@ -59,6 +71,7 @@ services:
     buildCommand: npm install
     startCommand: npm start
     healthCheckPath: /health
+    autoDeploy: true
     envVars:
       - key: OPENROUTER_API_KEY
         sync: false

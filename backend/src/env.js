@@ -29,8 +29,23 @@ if (!process.env.JWT_SECRET) {
   process.exit(1);
 }
 
+/**
+ * Fatal everywhere, production included.
+ *
+ * This was briefly a warning in production, on the reasoning that refusing to
+ * boot would take a running site down. That reasoning was wrong: Render — and
+ * every host with a health check — does not promote a deploy that fails to
+ * start, so the previous version keeps serving and the operator gets a clear
+ * error. The cost of failing hard is a red deploy, not an outage.
+ *
+ * The cost of not failing is much higher. Tokens are signed with this value and
+ * carry nothing but a user id, so a guessable secret is not a weak password —
+ * it lets anyone mint a valid token for any account in the app. A warning in a
+ * log nobody reads is not a control.
+ */
 if (process.env.JWT_SECRET.length < 32) {
-  console.error('\n❌ JWT_SECRET is too short. Generate a real one: openssl rand -hex 32\n');
+  console.error('\n❌ JWT_SECRET is too short — tokens signed with it are forgeable.');
+  console.error('   Generate a real one: openssl rand -hex 32\n');
   process.exit(1);
 }
 

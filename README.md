@@ -150,6 +150,31 @@ Accounts, friendships, communities and messages now survive a backend restart �
 
 ---
 
+## 🚢 Deployment
+
+Three pieces, all on free tiers:
+
+| | Where | Deploys when |
+|---|---|---|
+| `frontend` | Vercel (Hobby) | you push to `main` |
+| `backend` | Render (Free) | you push to `main` |
+| `mlend` | Render (Free) | you push to `main` |
+
+Both Render services are declared in `render.yaml` with `autoDeploy: true`, and Vercel's Git integration builds `main` on every push. There is nothing to run by hand — a merge is a release.
+
+**Staying awake without running out of hours.** Render idles a free web service out after ~15 minutes with no inbound traffic, and a free workspace gets **750 instance-hours a month in total, not per service**. One service kept up around the clock costs about 730 of them. Two costs about 1460, so the allowance runs out mid-month and Render suspends *both*.
+
+So exactly one service is kept awake — the backend, because it holds the live sockets and a spin-down disconnects everyone. It is kept awake in two layers:
+
+- **From inside**, `KEEP_ALIVE_INTERVAL_MS` on the backend service makes it ping its own public URL every five minutes. Setting that variable is also the switch that turns the pinger on: it used to start by itself wherever `RENDER_EXTERNAL_URL` was present, which is *every* Render service, so mlend was quietly staying awake too and the two of them were on course to burn the whole month's hours by about the 15th.
+- **From outside**, `.github/workflows/keep-alive.yml` hits `/health` every ten minutes from GitHub Actions. This is the layer that matters after something has gone wrong: a self-ping can only prevent a spin-down, never recover from one, because a stopped instance has stopped timers. Note that GitHub disables a scheduled workflow after 60 days without repository activity — re-enable it from the Actions tab if the pings stop.
+
+mlend is left to sleep. It is stateless and holds no sockets; the cost is a slow first **Format** or **Summarize** after an idle spell.
+
+**What does not survive a deploy.** Render's free plan has no persistent disk, so `backend/.data/querysphere.json` lives in the container's ephemeral filesystem: it survives a process restart, not a redeploy or a spin-down. Attach a disk on a paid instance and point `DATA_DIR` at it for history that outlives a release.
+
+---
+
 ## 💻 Stack
 
 React · Vite · Express · Socket.io · JWT · bcryptjs · OpenRouter (free tier, no SDK — plain `fetch`)
