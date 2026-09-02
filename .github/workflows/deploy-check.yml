@@ -1,0 +1,80 @@
+# Prove that a push to main actually reached production.
+#
+# Both hosts deploy on push by themselves — Render via `autoDeploy: true` in
+# render.yaml, Vercel via its Git integration. The failure mode worth catching
+# is not "the deploy was slow", it is "the deploy failed and nobody noticed":
+# a host that will not promote a broken build keeps the PREVIOUS release
+# serving, so the site stays up, every check passes, and main quietly drifts
+# ahead of what is actually live. Nothing about the running site looks wrong.
+#
+# So this asks each service which commit it is running and waits for both to
+# report the one that was just pushed. Green means the push is live. Red means
+# main and production disagree, and the run says which of the two is behind.
+#
+# The commit comes from RENDER_GIT_COMMIT on the backend (/health) and from
+# VERCEL_GIT_COMMIT_SHA stamped into index.html at build time by vite.config.js.
+
+name: Verify deploy went live
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  BACKEND_URL: ${{ vars.BACKEND_URL || 'https://querysphere-backend.onrender.com' }}
+  FRONTEND_URL: ${{ vars.FRONTEND_URL || 'https://querysphere.moeezahmadkhan.com' }}
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    # A free Render instance can take a few minutes to build, and may have to
+    # cold-start before it answers at all.
+    timeout-minutes: 20
+    steps:
+      - name: Wait for both services to report this commit
+        run: |
+          set -u
+          want="${GITHUB_SHA}"
+          echo "Waiting for backend and frontend to report ${want:0:7}"
+
+          deadline=$(( $(date +%s) + 900 ))
+          backend_ok=0
+          frontend_ok=0
+
+          while [ "$(date +%s)" -lt "$deadline" ]; do
+            if [ "$backend_ok" = 0 ]; then
+              # A cold start on a free instance is slow, and the request that
+              # wakes it is the slowest one, so give it room before giving up.
+              got=$(curl -s -m 90 "$BACKEND_URL/health" \
+                    | sed -n 's/.*"commit":"\([^"]*\)".*/\1/p' || true)
+              if [ "$got" = "$want" ]; then
+                echo "backend  ✓ running ${want:0:7}"
+                backend_ok=1
+              else
+                echo "backend  … running ${got:-unknown}"
+              fi
+            fi
+
+            if [ "$frontend_ok" = 0 ]; then
+              got=$(curl -s -m 60 "$FRONTEND_URL/" \
+                    | sed -n 's/.*name="qs-commit" content="\([^"]*\)".*/\1/p' || true)
+              if [ "$got" = "$want" ]; then
+                echo "frontend ✓ serving ${want:0:7}"
+                frontend_ok=1
+              else
+                echo "frontend … serving ${got:-unknown}"
+              fi
+            fi
+
+            [ "$backend_ok" = 1 ] && [ "$frontend_ok" = 1 ] && {
+              echo "::notice::Both services are live on ${want:0:7}"
+              exit 0
+            }
+            sleep 20
+          done
+
+          # Name the one that is behind — that is the thing to go and look at.
+          [ "$backend_ok" = 0 ] && echo "::error::Backend is NOT serving $want. Check the Render deploy log — a build that fails its health check leaves the previous release running."
+          [ "$frontend_ok" = 0 ] && echo "::error::Frontend is NOT serving $want. Check the Vercel deployment for this commit."
+          exit 1

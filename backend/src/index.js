@@ -60,6 +60,11 @@ app.use((req, res, next) => {
 app.get('/health', (_, res) => res.json({
   status: 'ok',
   service: 'QuerySphere Backend',
+  // The commit this instance is running. Render injects RENDER_GIT_COMMIT.
+  // Without it there is no way to tell from outside whether a push actually
+  // reached production or the previous release is still serving — which is
+  // exactly what happens when a deploy fails its health check.
+  commit: process.env.RENDER_GIT_COMMIT || 'dev',
   keepAlive: keepAliveStatus(),
 }));
 

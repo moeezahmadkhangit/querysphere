@@ -166,6 +166,15 @@ Three pieces, all on free tiers:
 
 Both Render services are declared in `render.yaml` with `autoDeploy: true`, and Vercel's Git integration builds `main` on every push. There is nothing to run by hand — a merge is a release.
 
+**And the release proves itself.** The failure worth catching is not a slow deploy, it is a *failed* one: a host that will not promote a broken build keeps the previous release serving, so the site stays up, nothing looks wrong, and `main` quietly drifts ahead of what is actually live. So both services report the commit they are running — the backend on `/health` from `RENDER_GIT_COMMIT`, the frontend in a `<meta name="qs-commit">` stamped into `index.html` at build time from `VERCEL_GIT_COMMIT_SHA` — and `.github/workflows/deploy-check.yml` runs on every push to `main` and waits for both to report the commit that was just pushed. Green means it is live; red names whichever of the two is behind.
+
+Check either by hand at any time:
+
+```bash
+curl -s https://querysphere-backend.onrender.com/health | jq .commit
+curl -s https://querysphere.moeezahmadkhan.com/ | grep qs-commit
+```
+
 **Staying awake without running out of hours.** Render idles a free web service out after ~15 minutes with no inbound traffic, and a free workspace gets **750 instance-hours a month in total, not per service**. One service kept up around the clock costs about 730 of them. Two costs about 1460, so the allowance runs out mid-month and Render suspends *both*.
 
 So exactly one service is kept awake — the backend, because it holds the live sockets and a spin-down disconnects everyone. It is kept awake in two layers:
