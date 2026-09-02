@@ -1472,3 +1472,10 @@ select.form-input {
     animation: slideIn 0.25s var(--ease);
   }
 }
+
+/* A conversation you may read but not add to — an ex-contact's direct message.
+   Muted rather than alarming: nothing has gone wrong, the door is just shut. */
+.conn-banner.is-readonly {
+  color: var(--muted);
+  border-color: var(--line);
+}

@@ -3,6 +3,7 @@ import {
   addMessage,
   getRoom,
   canAccess,
+  canPost,
   findUserById,
   findMessage,
   deleteMessage,
@@ -149,6 +150,16 @@ export function initSocket(io) {
       return room;
     };
 
+    /**
+     * Authorise a write. Reading a direct message survives an unfriending;
+     * writing into one does not — see canPost in the store.
+     */
+    const authorizeWrite = (roomId) => {
+      const room = authorize(roomId);
+      if (!room || !canPost(socket.user.id, room)) return null;
+      return room;
+    };
+
     socket.on('join_room', (roomId) => {
       const room = authorize(roomId);
       if (!room) return;
@@ -182,7 +193,7 @@ export function initSocket(io) {
     });
 
     socket.on('send_message', ({ roomId, text }) => {
-      const room = authorize(roomId);
+      const room = authorizeWrite(roomId);
       if (!room) return;
       if (typeof text !== 'string' || !text.trim()) return;
 
@@ -241,7 +252,7 @@ export function initSocket(io) {
     });
 
     socket.on('typing_start', ({ roomId }) => {
-      if (!authorize(roomId)) return;
+      if (!authorizeWrite(roomId)) return;
       socket.to(roomId).emit('typing_start', {
         userId: socket.user.id,
         username: socket.user.username,
@@ -254,7 +265,7 @@ export function initSocket(io) {
     });
 
     socket.on('add_reaction', ({ roomId, messageId, emoji }) => {
-      const room = authorize(roomId);
+      const room = authorizeWrite(roomId);
       if (!room) return;
       // An arbitrary client string was stored and re-broadcast verbatim; cap it
       // so the reaction chip cannot be used to smuggle a paragraph into the UI.

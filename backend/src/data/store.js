@@ -281,6 +281,30 @@ export function canAccess(userId, room) {
   return !!room.memberIds?.has(userId);
 }
 
+/**
+ * May this person still SAY something here?
+ *
+ * Separate from canAccess, because reading and writing are revoked at
+ * different moments. Friendship was required to open a direct message and then
+ * never checked again, so removing somebody dropped them from your list and
+ * changed nothing else: they kept the room, and kept being able to write into
+ * it. "Remove" that does not stop the other person contacting you is not a
+ * control, it is a label.
+ *
+ * The conversation stays readable to both sides afterwards. It is as much your
+ * record as theirs, and deleting somebody's own history to enforce a block
+ * takes more from the person doing the blocking than from the person blocked.
+ */
+export function canPost(userId, room) {
+  if (!canAccess(userId, room)) return false;
+  if (room.type !== 'dm') return true;
+
+  const user = findUserById(userId);
+  const otherId = [...room.memberIds].find((id) => id !== userId);
+  // Both directions: whoever did the removing, neither of them may write.
+  return !!user && !!otherId && user.friends.has(otherId);
+}
+
 export function getRoom(roomId) {
   return rooms.get(roomId) || null;
 }
@@ -296,6 +320,8 @@ export function roomView(room, viewerId) {
     ownerId: room.ownerId,
     messageCount: room.messages.length,
     unread: unreadCount(findUserById(viewerId), room),
+    // The composer needs to know, or it offers a send that is silently dropped.
+    readOnly: !canPost(viewerId, room),
   };
 
   if (room.type === 'dm') {

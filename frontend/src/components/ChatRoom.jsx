@@ -40,8 +40,13 @@ export default function ChatRoom({
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [lastId]);
 
+  // The server refuses writes to a direct message with somebody who is no
+  // longer a friend. Without this the composer would accept the message and
+  // drop it silently, which reads as the app being broken.
+  const readOnly = !!room?.readOnly;
+
   const handleSend = () => {
-    if (!draft.trim() || !connected) return;
+    if (!draft.trim() || !connected || readOnly) return;
     onSend(draft);
     setDraft('');
   };
@@ -138,11 +143,18 @@ export default function ChatRoom({
               Reconnecting — messages you send now will not be delivered.
             </p>
           )}
+          {readOnly && (
+            <p className="conn-banner is-readonly" role="status">
+              You are no longer connected with {room.name}. The conversation stays
+              here to read; add each other again to keep talking.
+            </p>
+          )}
           <div className="input-box">
             <textarea
               id="qs-message-input"
               className="msg-input"
-              placeholder={room.type === 'channel' ? `Message #${room.name}…` : `Message ${room.name}…`}
+              placeholder={readOnly ? 'You can read this conversation, but not add to it' : room.type === 'channel' ? `Message #${room.name}…` : `Message ${room.name}…`}
+              disabled={readOnly}
               value={draft}
               rows={1}
               onChange={(e) => { setDraft(e.target.value); onStartTyping(); }}
@@ -153,12 +165,12 @@ export default function ChatRoom({
                 id="qs-format"
                 className="btn-format"
                 onClick={handleFormat}
-                disabled={!draft.trim() || formatting}
+                disabled={!draft.trim() || formatting || readOnly}
                 title="AI format message"
               >
                 {formatting ? <span className="spinner" /> : '✨ Format'}
               </button>
-              <button id="qs-send" className="btn-send" onClick={handleSend} disabled={!draft.trim() || !connected} title={connected ? 'Send' : 'Reconnecting…'}>➤</button>
+              <button id="qs-send" className="btn-send" onClick={handleSend} disabled={!draft.trim() || !connected || readOnly} title={readOnly ? 'This conversation is read-only' : connected ? 'Send' : 'Reconnecting…'}>➤</button>
             </div>
           </div>
           <p className="input-hint">

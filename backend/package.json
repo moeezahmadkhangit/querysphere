@@ -1,12 +1,13 @@
 {
   "name": "querysphere-backend",
   "version": "1.0.0",
-  "description": "QuerySphere real-time chat backend — Express + Socket.io",
+  "description": "QuerySphere real-time chat backend \u2014 Express + Socket.io",
   "main": "src/index.js",
   "type": "module",
   "scripts": {
     "dev": "nodemon src/index.js",
-    "start": "node src/index.js"
+    "start": "node src/index.js",
+    "test:access": "node test/access-control.mjs"
   },
   "keywords": [],
   "author": "",
@@ -20,7 +21,8 @@
     "socket.io": "^4.8.3"
   },
   "devDependencies": {
-    "nodemon": "^3.1.14"
+    "nodemon": "^3.1.14",
+    "socket.io-client": "^4.8.3"
   },
   "engines": {
     "node": ">=20"
