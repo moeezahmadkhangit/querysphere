@@ -7,6 +7,7 @@ import authRouter from './routes/auth.js';
 import chatRouter from './routes/chat.js';
 import { initSocket } from './socket/chatSocket.js';
 import { startKeepAlive } from './keepAlive.js';
+import { allowedOrigins } from './allowedOrigins.js';
 
 dotenv.config();
 
@@ -29,7 +30,7 @@ const server = http.createServer(app);
 
 const io = new Server(server, {
   cors: {
-    origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+    origin: allowedOrigins,
     methods: ['GET', 'POST'],
     credentials: true,
   },
@@ -37,7 +38,7 @@ const io = new Server(server, {
 
 // Middleware
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+  origin: allowedOrigins,
   credentials: true,
 }));
 app.use(express.json());
@@ -56,5 +57,6 @@ const PORT = process.env.PORT || 3001;
 server.listen(PORT, () => {
   console.log(`\n🚀 QuerySphere Backend running on http://localhost:${PORT}`);
   console.log(`📡 Socket.io ready`);
+  console.log(`🔓 Allowed origins: ${allowedOrigins.join(', ')}`);
   startKeepAlive();
 });

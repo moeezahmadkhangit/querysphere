@@ -4,12 +4,13 @@ import dotenv from 'dotenv';
 import aiRouter from './routes/ai.js';
 import { getApiKey, MODELS } from './openrouter.js';
 import { startKeepAlive } from './keepAlive.js';
+import { allowedOrigins } from './allowedOrigins.js';
 
 dotenv.config();
 
 const app = express();
 
-app.use(cors({ origin: process.env.FRONTEND_URL || 'http://localhost:5173' }));
+app.use(cors({ origin: allowedOrigins }));
 app.use(express.json());
 
 app.get('/health', (_, res) =>
@@ -31,5 +32,6 @@ app.listen(PORT, () => {
   } else {
     console.log('⚠️  No OpenRouter key — add OPENROUTER_API_KEY to mlend/.env (local fallbacks still work)');
   }
+  console.log(`🔓 Allowed origins: ${allowedOrigins.join(', ')}`);
   startKeepAlive();
 });

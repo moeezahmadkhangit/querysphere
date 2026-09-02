@@ -28,8 +28,11 @@ services:
       # .env.example is public and must not be used in production.
       - key: JWT_SECRET
         generateValue: true
-      # Origin allowed by CORS and the socket.io handshake — set this to the
-      # live frontend URL, e.g. https://querysphere.moeezahmadkhan.com
+      # Origins allowed by CORS and the socket.io handshake. Comma-separated,
+      # no trailing slashes. List every hostname the frontend answers on —
+      # Vercel serves it at <project>.vercel.app as well as at the custom
+      # domain, and requests from an unlisted origin are rejected:
+      #   https://querysphere.moeezahmadkhan.com,https://querysphere.vercel.app
       - key: FRONTEND_URL
         sync: false
       # Self-ping cadence. Render idles a free service out after ~15 minutes.
@@ -48,5 +51,6 @@ services:
     envVars:
       - key: OPENROUTER_API_KEY
         sync: false
+      # Same comma-separated origin list as the backend.
       - key: FRONTEND_URL
         sync: false
